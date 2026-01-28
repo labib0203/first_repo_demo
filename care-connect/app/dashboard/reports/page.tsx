@@ -1,8 +1,15 @@
 import pool from '@/lib/db';
 import { Database, Search } from 'lucide-react';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import RevenueReporter from './revenue-reporter';
 
-// We'll read the sql file content or just execute the queries manually mapped.
-// For security and simplicity in this demo, let's hardcode a few interesting reports based on the complex queries.
+// ... (REPORTS array remains same, skipped for brevity in tool call if not strictly needed in context but I'll leave it as is if I can't reach it)
+// wait, replaced content replaces the block. I need to be careful with imports.
+// Let's replace the top of the file to include imports, and then the start of the function.
+
+// Actually, I can just replace the component function start and add imports at top.
+// Since existing imports are lines 1-2.
 
 const REPORTS = [
     {
@@ -19,36 +26,99 @@ WHERE d.consultation_fee > (SELECT AVG(consultation_fee) FROM doctors)`
     {
         id: 2,
         title: "Revenue by Department",
-        description: "Rollup aggregation of revenue by department and doctor",
+        description: "Rollup aggregation of revenue by department (Grand Total included)",
         sql: `SELECT 
-    dept.name AS department,
-    CONCAT(p.first_name, ' ', p.last_name) AS doctor_name,
-    SUM(i.net_amount) AS total_revenue
-FROM invoices i
-JOIN appointments a ON i.appointment_id = a.appointment_id
-JOIN doctors d ON a.doctor_id = d.doctor_id
-JOIN departments dept ON d.dept_id = dept.dept_id
-JOIN profiles p ON d.user_id = p.user_id
-GROUP BY dept.name, p.user_id WITH ROLLUP`
+    COALESCE(department, 'GRAND TOTAL') AS department,
+    SUM(revenue) AS total_revenue
+FROM (
+    SELECT 
+        dept.name AS department,
+        i.net_amount AS revenue
+    FROM invoices i
+    JOIN appointments a ON i.appointment_id = a.appointment_id
+    JOIN doctors d ON a.doctor_id = d.doctor_id
+    JOIN departments dept ON d.dept_id = dept.dept_id
+    WHERE i.status = 'Paid'
+
+    UNION ALL
+    
+    SELECT 
+        'Laboratory' AS department,
+        i.net_amount AS revenue
+    FROM invoices i
+    WHERE i.test_record_id IS NOT NULL 
+    AND i.status = 'Paid'
+
+    UNION ALL
+
+    SELECT 
+        'Pharmacy Sales' AS department,
+        i.net_amount AS revenue
+    FROM invoices i
+    WHERE i.pharmacy_order_id IS NOT NULL
+    AND i.status = 'Paid'
+
+    UNION ALL
+
+    SELECT
+        'Pharmacy (Restock Expenses)' AS department,
+        -(amount) AS revenue
+    FROM hospital_expenses
+    WHERE category = 'Pharmacy_Restock'
+
+) AS combined_revenue
+GROUP BY department WITH ROLLUP`
     },
     {
         id: 3,
         title: "Patient Spending Rank",
-        description: "Ranking patients by total spend (Window Function)",
+        description: "Ranking patients by total spend across all services (Window Function)",
         sql: `SELECT 
-    CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+    CONCAT(prof.first_name, ' ', prof.last_name) AS patient_name,
     SUM(i.net_amount) AS total_spent,
     RANK() OVER (ORDER BY SUM(i.net_amount) DESC) AS spending_rank
-FROM patients pat
-JOIN profiles p ON pat.user_id = p.user_id
-JOIN appointments a ON pat.patient_id = a.patient_id
-JOIN invoices i ON a.appointment_id = i.appointment_id
-GROUP BY pat.patient_id, p.first_name, p.last_name`
+FROM invoices i
+LEFT JOIN appointments a ON i.appointment_id = a.appointment_id
+LEFT JOIN patient_tests pt ON i.test_record_id = pt.record_id
+LEFT JOIN pharmacy_orders po ON i.pharmacy_order_id = po.order_id
+JOIN patients pat ON pat.patient_id = COALESCE(a.patient_id, pt.patient_id, po.patient_id)
+JOIN profiles prof ON pat.user_id = prof.user_id
+WHERE i.status = 'Paid'
+GROUP BY pat.patient_id, prof.first_name, prof.last_name`
+    },
+    {
+        id: 4,
+        title: "Financial Performance (View)",
+        description: "Yearly, Monthly, and Weekly Revenue (Pre-calculated table)",
+        sql: `SELECT 
+    report_type AS Report_Type,
+    period_label AS Period,
+    CONCAT('৳', FORMAT(total_revenue, 2)) AS Revenue,
+    DATE_FORMAT(last_updated, '%M %d, %Y %h:%i %p') AS Last_Updated
+FROM financial_reports
+ORDER BY 
+    FIELD(report_type, 'Yearly', 'Monthly', 'Weekly'), 
+    period_label DESC`
     }
 ];
 
-export default async function ReportsPage({ searchParams }: { searchParams: { q?: string } }) {
-    const activeReport = REPORTS.find(r => r.id.toString() === searchParams?.q);
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+    const params = await searchParams;
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session');
+    let role = null;
+    if (session) {
+        try {
+            const data = JSON.parse(session.value);
+            role = data.role;
+        } catch (e) { }
+    }
+
+    if (role !== 'Admin') {
+        redirect('/dashboard');
+    }
+
+    const activeReport = REPORTS.find(r => r.id.toString() === params.q);
     let results: any[] = [];
     let error = null;
 
@@ -67,6 +137,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: { q?
                 <h2 className="text-2xl font-bold text-slate-800">Advanced Reports</h2>
                 <p className="text-slate-500">Run complex analysis on your hospital data.</p>
             </div>
+
+            <RevenueReporter />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">

@@ -1,16 +1,41 @@
 import { getAllAppointments, generateInvoice } from '@/lib/actions';
-import { BadgeCheck, Clock, XCircle, FileText } from 'lucide-react';
+import { BadgeCheck, Clock, XCircle, FileText, Stethoscope } from 'lucide-react';
+import { cookies } from 'next/headers';
 
-export default async function AppointmentsPage() {
-    const appointments = await getAllAppointments();
+import BackButton from '@/components/ui/BackButton';
+
+export default async function AppointmentsPage(props: { searchParams: Promise<{ filter?: 'today' | 'upcoming' | 'all' }> }) {
+    const searchParams = await props.searchParams;
+    const filter = searchParams?.filter;
+    const appointments = await getAllAppointments(filter);
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session');
+    let role = null;
+    if (session) {
+        try {
+            role = JSON.parse(session.value).role;
+        } catch (e) { }
+    }
+
+    // Debug log to terminal to confirm filter value
+    console.log('Appointments Page Filter:', filter);
+    console.log('Appointments Count:', (appointments as any).length);
 
     return (
         <div className="space-y-6">
+            <BackButton href="/dashboard" label="Back to Dashboard" />
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800">All Appointments</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">
+                        {filter === 'today' ? "Today's Appointments" : 'All Appointments'}
+                    </h2>
                     <p className="text-slate-500">Manage patient visits and generate invoices.</p>
                 </div>
+                {filter && (
+                    <a href="/dashboard/appointments" className="flex items-center gap-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors">
+                        <XCircle size={16} /> Clear Filter
+                    </a>
+                )}
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -27,7 +52,13 @@ export default async function AppointmentsPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {appointments.map((appt: any) => (
+                        {(appointments as any[]).length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                                    No appointments found matching this filter.
+                                </td>
+                            </tr>
+                        ) : (appointments as any[]).map((appt: any) => (
                             <tr key={appt.appointment_id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-6 py-4 text-slate-500">#{appt.appointment_id}</td>
                                 <td className="px-6 py-4 font-medium text-slate-900">{appt.patient_name}</td>
@@ -39,9 +70,9 @@ export default async function AppointmentsPage() {
                                 <td className="px-6 py-4 text-slate-600">
                                     {appt.total_amount ? `৳${appt.total_amount}` : '-'}
                                 </td>
-                                <td className="px-6 py-4">
-                                    {/* Only allow generating invoice if completed and not yet billed (simplified check) */}
-                                    {appt.status === 'Completed' && !appt.total_amount ? (
+                                <td className="px-6 py-4 flex gap-2">
+                                    {/* Reception Actions */}
+                                    {role !== 'Admin' && appt.status === 'Completed' && !appt.total_amount && (
                                         <form action={async () => {
                                             'use server';
                                             await generateInvoice(appt.appointment_id);
@@ -50,7 +81,17 @@ export default async function AppointmentsPage() {
                                                 <FileText size={14} /> Generate Bill
                                             </button>
                                         </form>
-                                    ) : (
+                                    )}
+
+                                    {/* Clinical Actions (Admin acting as Doctor) */}
+                                    {role === 'Admin' && (appt.status === 'Confirmed' || appt.status === 'Scheduled') && (
+                                        <a href={`/dashboard/consultation/${appt.appointment_id}`} className="flex items-center gap-1 text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 border border-purple-200 font-medium">
+                                            <Stethoscope size={14} /> Start Consult
+                                        </a>
+                                    )}
+
+                                    {/* Fallback for empty state */}
+                                    {!((role !== 'Admin' && appt.status === 'Completed' && !appt.total_amount) || (role === 'Admin' && (appt.status === 'Confirmed' || appt.status === 'Scheduled'))) && (
                                         <span className="text-xs text-slate-400">No Action</span>
                                     )}
                                 </td>

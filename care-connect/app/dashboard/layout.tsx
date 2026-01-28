@@ -1,11 +1,27 @@
 import Link from 'next/link';
-import { LayoutDashboard, Users, Calendar, FileText, Settings, LogOut, HeartPulse } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Settings, LogOut, HeartPulse, Building2, Microscope, Bed, Package, Briefcase } from 'lucide-react';
+import { cookies } from 'next/headers';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session');
+    let role = 'Receptionist'; // Default fallback
+
+    if (session) {
+        try {
+            const data = JSON.parse(session.value);
+            role = data.role;
+        } catch (e) {
+            console.error("Failed to parse session", e);
+        }
+    }
+
+    const isAdmin = role === 'Admin';
+
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
             {/* Sidebar */}
@@ -23,15 +39,27 @@ export default function DashboardLayout({
                     </div>
 
                     <NavItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" />
+                    {!isAdmin && (
+                        <NavItem href="/dashboard/rooms" icon={<Bed size={20} />} label="Book a Room" />
+                    )}
+                    <NavItem href="/dashboard/reception" icon={<Building2 size={20} />} label="Reception View" />
+                    <NavItem href="/dashboard/tests" icon={<Microscope size={20} />} label="Available Tests" />
                     <NavItem href="/dashboard/appointments" icon={<Calendar size={20} />} label="Appointments" />
                     <NavItem href="/dashboard/patients" icon={<Users size={20} />} label="Patients" />
+                    <NavItem href="/dashboard/doctors" icon={<HeartPulse size={20} />} label="Doctors Directory" />
                     <NavItem href="/dashboard/billing" icon={<FileText size={20} />} label="Billing & Invoices" />
+                    <NavItem href="/dashboard/pharmacy" icon={<Package size={20} />} label="Pharmacy" />
 
-                    <div className="px-2 mt-8 mb-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        System
-                    </div>
-                    <NavItem href="/dashboard/reports" icon={<FileText size={20} />} label="Reports (Query View)" />
-                    <NavItem href="/dashboard/settings" icon={<Settings size={20} />} label="Settings" />
+                    {isAdmin && (
+                        <>
+                            <div className="px-2 mt-8 mb-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                System
+                            </div>
+                            <NavItem href="/dashboard/staff" icon={<Briefcase size={20} />} label="Staff Management" />
+                            <NavItem href="/dashboard/reports" icon={<FileText size={20} />} label="Reports (Query View)" />
+                            <NavItem href="/dashboard/settings" icon={<Settings size={20} />} label="Settings" />
+                        </>
+                    )}
                 </div>
 
                 <div className="p-4 border-t border-slate-800">
@@ -40,19 +68,19 @@ export default function DashboardLayout({
                         Sign Out
                     </button>
                 </div>
-            </aside>
+            </aside >
 
             {/* Main Content */}
-            <main className="flex-1 ml-64 min-h-screen flex flex-col">
+            < main className="flex-1 ml-64 min-h-screen flex flex-col" >
                 <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-40 px-8 flex items-center justify-between shadow-sm">
                     <h1 className="text-xl font-semibold text-slate-800">Hospital Management Portal</h1>
                     <div className="flex items-center gap-4">
                         <div className="text-sm text-right hidden sm:block">
-                            <div className="font-medium text-slate-900">Receptionist</div>
-                            <div className="text-slate-500 text-xs">Admin Access</div>
+                            <div className="font-medium text-slate-900">{role}</div>
+                            <div className="text-slate-500 text-xs">{isAdmin ? 'Full Access' : 'Restricted Access'}</div>
                         </div>
-                        <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold border border-blue-200">
-                            R
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold border ${isAdmin ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}>
+                            {role.charAt(0)}
                         </div>
                     </div>
                 </header>
@@ -60,8 +88,8 @@ export default function DashboardLayout({
                 <div className="flex-1 p-8">
                     {children}
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 }
 

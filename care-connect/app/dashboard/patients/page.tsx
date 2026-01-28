@@ -1,29 +1,44 @@
 import { getAllPatients } from '@/lib/actions';
 import { Plus, Search, User } from 'lucide-react';
 import Link from 'next/link';
+import { SearchInput } from './search';
+import { PatientHistoryButton } from './history-button';
+import { cookies } from 'next/headers';
 
-export default async function PatientsPage() {
-    const patients = await getAllPatients();
+import BackButton from '@/components/ui/BackButton';
+
+export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+    const params = await searchParams;
+    const patients = await getAllPatients(params?.q || '');
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session');
+    let role = null;
+    if (session) {
+        try {
+            const data = JSON.parse(session.value);
+            role = data.role;
+        } catch (e) { }
+    }
 
     return (
         <div className="space-y-6">
+            <BackButton href="/dashboard" label="Back to Dashboard" />
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">Patients Directory</h2>
                     <p className="text-slate-500">Manage patient records and profiles.</p>
                 </div>
-                <Link href="/dashboard/patients/new" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
-                    <Plus size={18} /> Add Patient
-                </Link>
+                {role !== 'Admin' && (
+                    <Link href="/dashboard/patients/new" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+                        <Plus size={18} /> Add Patient
+                    </Link>
+                )}
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* Search Bar Placeholder */}
+                {/* Search Bar */}
                 <div className="p-4 border-b border-slate-100">
-                    <div className="relative max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input placeholder="Search patients..." className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
-                    </div>
+                    <SearchInput />
                 </div>
 
                 <div className="overflow-x-auto">
@@ -44,14 +59,14 @@ export default async function PatientsPage() {
                                     <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No patients registered.</td>
                                 </tr>
                             ) : patients.map((p: any) => (
-                                <tr key={p.patient_id} className="hover:bg-slate-50/50 transition-colors group">
+                                <tr key={p.patient_id} className="hover:bg-blue-50/80 transition-all duration-200 group cursor-pointer">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold group-hover:scale-110 transition-transform duration-200">
                                                 {p.first_name[0]}{p.last_name[0]}
                                             </div>
                                             <div>
-                                                <div className="font-medium text-slate-900">{p.first_name} {p.last_name}</div>
+                                                <div className="font-medium text-slate-900 group-hover:text-blue-700 transition-colors">{p.first_name} {p.last_name}</div>
                                                 <div className="text-xs text-slate-500">ID: P-{p.patient_id}</div>
                                             </div>
                                         </div>
@@ -72,7 +87,13 @@ export default async function PatientsPage() {
                                         {p.emergency_contact_name || '-'}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="text-blue-600 hover:text-blue-800 font-medium text-xs">View History</button>
+                                        <PatientHistoryButton
+                                            history={p.medical_history_summary}
+                                            testHistory={p.test_history_summary}
+                                            pharmacyHistory={p.pharmacy_history_summary}
+                                            totalSpent={Number(p.total_spent)}
+                                            patientName={`${p.first_name} ${p.last_name}`}
+                                        />
                                     </td>
                                 </tr>
                             ))}

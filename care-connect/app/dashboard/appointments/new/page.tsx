@@ -1,5 +1,7 @@
-import { getDoctors, getPatients, bookAppointment } from '@/lib/actions';
+import { getDoctorsWithSchedules, getPatients, bookAppointment, checkDoctorAvailability, getAppointmentReasons, getAvailableTimeSlots } from '@/lib/actions';
 import { BookAppointmentForm } from './form'; // Client component
+
+import BackButton from '@/components/ui/BackButton';
 
 export default async function NewAppointmentPage() {
     // Fetch data for dropdowns
@@ -7,7 +9,7 @@ export default async function NewAppointmentPage() {
     let patients = [];
 
     try {
-        doctors = await getDoctors();
+        doctors = await getDoctorsWithSchedules();
         patients = await getPatients();
     } catch (e) {
         // handle err
@@ -15,12 +17,20 @@ export default async function NewAppointmentPage() {
 
     return (
         <div className="max-w-2xl mx-auto">
+            <BackButton href="/dashboard/appointments" label="Back to Appointments" />
             <div className="mb-8">
                 <h2 className="text-2xl font-bold text-slate-800">Book New Appointment</h2>
                 <p className="text-slate-500">Schedule a consultation. Transacts responsibly.</p>
             </div>
 
-            <BookAppointmentForm doctors={doctors} patients={patients} bookAction={bookAppointment} />
+            <BookAppointmentForm
+                doctors={doctors}
+                patients={patients}
+                bookAction={bookAppointment}
+                checkAvailabilityAction={checkDoctorAvailability}
+                getReasonsAction={getAppointmentReasons}
+                getSlotsAction={getAvailableTimeSlots}
+            />
         </div>
     )
 }

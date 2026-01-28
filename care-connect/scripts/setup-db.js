@@ -40,7 +40,7 @@ async function seed() {
             .filter(s => s.length > 0);
 
         for (const block of procBlocks) {
-            if (block.toLowerCase().startsWith('use')) continue; // Skip USE
+            // if (block.toLowerCase().startsWith('use')) continue; // Skip USE
             try {
                 await connection.query(block);
             } catch (e) {
@@ -58,6 +58,46 @@ async function seed() {
         const seedSql = fs.readFileSync(path.join(__dirname, '../database/04_seed.sql'), 'utf8');
         await connection.query(seedSql);
         console.log('✅ Seed Data inserted.');
+
+        // 4.2 Post-Seed Triggers
+        console.log('⏳ Applying Post-Seed Triggers...');
+        const postSeedSql = fs.readFileSync(path.join(__dirname, '../database/05_post_seed_triggers.sql'), 'utf8');
+        const postSeedBlocks = postSeedSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of postSeedBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing post-seed block:', e.message);
+            }
+        }
+        console.log('✅ Post-Seed Triggers created.');
+
+        // 4.5 Analytics
+        console.log('⏳ Applying Analytics Procedures...');
+        const analyticsSql = fs.readFileSync(path.join(__dirname, '../database/07_analytics.sql'), 'utf8');
+        const analyticsBlocks = analyticsSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of analyticsBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing analytics block:', e.message);
+            }
+        }
+        console.log('✅ Analytics Procedures created.');
 
         // 5. Advanced Features (Splitting logic needed for DELIMITER)
         console.log('⏳ Applying Advanced Features (Partitioning, Events, Cursors)...');
@@ -88,6 +128,166 @@ async function seed() {
             }
         }
         console.log('✅ Advanced Features Applied.');
+
+        // 6. Discharge Procedure
+        console.log('⏳ Applying Discharge Procedure...');
+        const dischargeSql = fs.readFileSync(path.join(__dirname, '../database/08_discharge_procedure.sql'), 'utf8');
+        const dischargeBlocks = dischargeSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of dischargeBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing discharge block:', e.message);
+            }
+        }
+        console.log('✅ Discharge Procedure created.');
+
+        // 7. Doctor Leaves
+        console.log('⏳ Applying Doctor Leaves...');
+        const leavesSql = fs.readFileSync(path.join(__dirname, '../database/09_doctor_leaves.sql'), 'utf8');
+        const leavesBlocks = leavesSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of leavesBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing leaves block:', e.message);
+            }
+        }
+        console.log('✅ Doctor Leaves created.');
+
+        // 8. Update Availability Functions
+        console.log('⏳ Updating Availability Functions...');
+        const availabilitySql = fs.readFileSync(path.join(__dirname, '../database/10_update_availability.sql'), 'utf8');
+        const availabilityBlocks = availabilitySql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of availabilityBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing availability block:', e.message);
+            }
+        }
+        console.log('✅ Availability Functions updated.');
+
+        // 9. Consultation Procedures
+        console.log('⏳ Applying Consultation Procedures...');
+        const consultationSql = fs.readFileSync(path.join(__dirname, '../database/11_consultation_procedures.sql'), 'utf8');
+        const consultationBlocks = consultationSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of consultationBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing consultation block:', e.message);
+            }
+        }
+        console.log('✅ Consultation Procedures created.');
+
+        // 10. Staff Management
+        console.log('⏳ Applying Staff Management...');
+        const staffSql = fs.readFileSync(path.join(__dirname, '../database/12_staff_management.sql'), 'utf8');
+        const staffBlocks = staffSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of staffBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing staff block:', e.message);
+            }
+        }
+        console.log('✅ Staff Management created.');
+
+        // 11. Staff Seed Data
+        console.log('⏳ Seeding Staff Data...');
+        const staffSeedSql = fs.readFileSync(path.join(__dirname, '../database/13_staff_seed.sql'), 'utf8');
+        const staffSeedBlocks = staffSeedSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of staffSeedBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error seeding staff:', e.message);
+            }
+        }
+        console.log('✅ Staff Data seeded.');
+
+        // 12. Leaves Management (Doctors & Staff)
+        console.log('⏳ Applying Leaves Management...');
+        const leavesMgmtSql = fs.readFileSync(path.join(__dirname, '../database/14_leaves_management.sql'), 'utf8');
+        const leavesMgmtBlocks = leavesMgmtSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of leavesMgmtBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing leaves mgmt block:', e.message);
+            }
+        }
+        console.log('✅ Leaves Management Applied.');
+
+        // 13. Fix Doctor Slots (Availability Check)
+        console.log('⏳ Applying Availability Slots Fix...');
+        const slotFixSql = fs.readFileSync(path.join(__dirname, '../database/15_fix_doctor_slots.sql'), 'utf8');
+        const slotFixBlocks = slotFixSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of slotFixBlocks) {
+            // if (block.toLowerCase().startsWith('use')) continue;
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing slot fix block:', e.message);
+            }
+        }
+        console.log('✅ Availability Slots Fix Applied.');
 
     } catch (err) {
         console.error('Error seeding database:', err);

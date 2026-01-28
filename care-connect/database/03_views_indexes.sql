@@ -56,3 +56,32 @@ JOIN doctors d ON a.doctor_id = d.doctor_id
 JOIN profiles doc_p ON d.user_id = doc_p.user_id
 LEFT JOIN medical_records mr ON a.appointment_id = mr.appointment_id
 LEFT JOIN invoices i ON a.appointment_id = i.appointment_id;
+
+-- 3. Active Doctors Overview
+-- Shows Doctor Name, Department, Specialization, and their Room Numbers
+CREATE OR REPLACE VIEW View_ActiveDoctors AS
+SELECT 
+    d.doctor_id,
+    CONCAT(p.first_name, ' ', p.last_name) AS doctor_name,
+    dept.name AS department_name,
+    d.specialization,
+    -- Group their room numbers (e.g., "Rm-101, Rm-102") to avoid duplicates if they work multiple days in same room
+    GROUP_CONCAT(DISTINCT COALESCE(r.room_number, s.room_number) ORDER BY r.room_number SEPARATOR ', ') AS room_numbers
+FROM doctors d
+JOIN profiles p ON d.user_id = p.user_id
+JOIN departments dept ON d.dept_id = dept.dept_id
+LEFT JOIN schedules s ON d.doctor_id = s.doctor_id
+LEFT JOIN rooms r ON r.current_doctor_id = d.doctor_id
+GROUP BY d.doctor_id, doctor_name, department_name, d.specialization;
+
+-- 4. Available Rooms Overview (For Reception Desk)
+CREATE OR REPLACE VIEW View_AvailableRooms AS
+SELECT 
+    room_number,
+    type,
+    charge_per_day,
+    is_available
+FROM rooms
+WHERE is_available = TRUE;
+
+
