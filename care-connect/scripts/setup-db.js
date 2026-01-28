@@ -289,6 +289,40 @@ async function seed() {
         }
         console.log('✅ Availability Slots Fix Applied.');
 
+        // 14. Extra Licenses
+        console.log('⏳ Applying Extra Licenses...');
+        const licensesSql = fs.readFileSync(path.join(__dirname, '../database/16_extra_licenses.sql'), 'utf8');
+        // Simple insert, no delimiters needed usually but for consistency with others:
+        // (Use simple query if no delimiters, but the block logic handles it)
+        try {
+            await connection.query(licensesSql);
+        } catch (e) {
+            // Ignore duplicate entry if re-running
+            if (!e.message.includes('Duplicate entry')) {
+                console.error('Error executing extra licenses:', e.message);
+            }
+        }
+        console.log('✅ Extra Licenses Applied.');
+
+        // 15. Fix Slots Display
+        console.log('⏳ Applying Slots Fix...');
+        const slotsFixSql = fs.readFileSync(path.join(__dirname, '../database/17_fix_slots_display.sql'), 'utf8');
+        const slotsFixBlocks = slotsFixSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of slotsFixBlocks) {
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing slots fix block:', e.message);
+            }
+        }
+        console.log('✅ Slots Fix Applied.');
+
     } catch (err) {
         console.error('Error seeding database:', err);
     } finally {

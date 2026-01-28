@@ -43,6 +43,20 @@ export default function NewDoctorForm() {
         e.preventDefault();
         setError('');
 
+        // Validation Logic
+        const bdPhoneRegex = /^(?:\+88|88)?(01[3-9]\d{8})$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(formData.email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+
+        if (!bdPhoneRegex.test(formData.phone)) {
+            setError('Please enter a valid Bangladeshi mobile number (e.g., 017xxxxxxxx).');
+            return;
+        }
+
         const data = new FormData();
         Object.entries(formData).forEach(([key, value]) => data.append(key, value));
 
