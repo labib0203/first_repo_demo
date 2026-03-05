@@ -16,8 +16,11 @@ export default async function NewAppointmentPage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <BackButton href="/dashboard/appointments" label="Back to Appointments" />
+        <div className="max-w-2xl mx-auto space-y-2">
+            <div className="flex items-center gap-4">
+                <BackButton href="/dashboard" label="Back to Dashboard" />
+                <BackButton href="/dashboard/appointments" label="Back to Appointments" />
+            </div>
             <div className="mb-8">
                 <h2 className="text-2xl font-bold text-slate-800">Book New Appointment</h2>
                 <p className="text-slate-500">Schedule a consultation. Transacts responsibly.</p>

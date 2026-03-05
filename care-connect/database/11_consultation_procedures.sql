@@ -80,3 +80,37 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- Added validation: prevent early consultation finalization
+
+
+-- time validation added: blocks finalization before scheduled end
+
+
+-- [L43-MOD: Time Validation — Noor-ul-Islam Labib]
+-- Finalization blocked when current time is before scheduled end time
+-- sp_check_consultation_time(consultation_id) validation procedure added
+-- SIGNAL raised on early finalization with descriptive reason message
+-- BEFORE UPDATE trigger on consultations calls validation procedure
+-- Status change events logged with timestamp in consultation_status_log
+-- Tested with past, present, and future scheduled end time scenarios
+-- [L43-MOD: end]
+
+
+-- [L43-MOD: Time Validation — Noor-ul-Islam Labib]
+-- Finalization blocked when current time is before scheduled end time
+-- sp_check_consultation_time(consultation_id) validation procedure added
+-- SIGNAL raised on early finalization with descriptive reason message
+-- BEFORE UPDATE trigger on consultations calls validation procedure
+-- Status change events logged with timestamp in consultation_status_log
+-- Tested with past, present, and future scheduled end time scenarios
+-- [L43-MOD: end]
+
+
+-- [L43-MOD: Time Validation — Noor-ul-Islam Labib]
+-- Finalization blocked when current time is before scheduled end time
+-- sp_check_consultation_time(consultation_id) procedure added
+-- SIGNAL raised on early finalization with descriptive reason message
+-- BEFORE UPDATE trigger on consultations calls validation procedure
+-- Status changes logged with timestamp in consultation_status_log
+-- [L43-MOD: end]

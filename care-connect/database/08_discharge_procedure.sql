@@ -79,3 +79,338 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- Discharge now checks lab test clearance
+
+
+
+
+-- discharge now validates lab test clearance before finalizing
+
+
+-- [F41: Extended Discharge Validation — Farhana Uvro]
+DELIMITER $$
+
+CREATE OR REPLACE PROCEDURE sp_validate_discharge(
+    IN  p_patient_id    INT,
+    OUT p_can_discharge TINYINT)
+BEGIN
+    DECLARE v_pending_labs     INT          DEFAULT 0;
+    DECLARE v_pending_bills    DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_active_consult   INT          DEFAULT 0;
+    DECLARE v_pending_pharmacy INT          DEFAULT 0;
+
+    SELECT COUNT(*) INTO v_pending_labs
+    FROM lab_tests
+    WHERE patient_id = p_patient_id
+      AND status NOT IN ('completed','cancelled')
+      AND scheduled_date <= NOW();
+
+    SELECT COALESCE(SUM(total_amount - paid_amount), 0) INTO v_pending_bills
+    FROM billing b
+    JOIN appointments a ON b.appointment_id = a.appointment_id
+    WHERE a.patient_id = p_patient_id
+      AND b.payment_status != 'paid';
+
+    SELECT COUNT(*) INTO v_active_consult
+    FROM consultations
+    WHERE patient_id = p_patient_id AND status = 'in_progress';
+
+    SELECT COUNT(*) INTO v_pending_pharmacy
+    FROM pharmacy_orders
+    WHERE patient_id = p_patient_id
+      AND order_status NOT IN ('dispensed','cancelled');
+
+    IF v_pending_labs > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: lab results still pending';
+    ELSEIF v_pending_bills > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: outstanding billing balance';
+    ELSEIF v_active_consult > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: consultation in progress';
+    ELSEIF v_pending_pharmacy > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: pharmacy order not dispensed';
+    ELSE
+        SET p_can_discharge = 1;
+        INSERT INTO discharge_log(patient_id, cleared_at, cleared_by)
+        VALUES (p_patient_id, NOW(), CURRENT_USER());
+    END IF;
+END$$
+
+CREATE OR REPLACE TRIGGER trg_before_discharge_insert
+BEFORE INSERT ON discharges
+FOR EACH ROW
+BEGIN
+    DECLARE v_ok TINYINT DEFAULT 0;
+    CALL sp_validate_discharge(NEW.patient_id, v_ok);
+    IF v_ok != 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Discharge blocked: clearance validation failed';
+    END IF;
+END$$
+
+CREATE OR REPLACE PROCEDURE sp_force_discharge(
+    IN p_patient_id  INT,
+    IN p_admin_id    INT,
+    IN p_reason      VARCHAR(255))
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM staff WHERE staff_id = p_admin_id AND role = 'admin'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Only admins can force a discharge';
+    END IF;
+
+    INSERT INTO discharges(patient_id, discharge_date, is_forced,
+                           admin_override_by, override_reason)
+    VALUES (p_patient_id, NOW(), 1, p_admin_id, p_reason);
+
+    INSERT INTO discharge_log(patient_id, cleared_at, cleared_by, is_forced)
+    VALUES (p_patient_id, NOW(), p_admin_id, 1);
+END$$
+
+DELIMITER ;
+-- [F41: end]
+
+
+-- [F41: Extended Discharge Validation System — Farhana Uvro]
+
+DELIMITER $$
+
+-- Procedure: Full pre-discharge validation for a patient
+CREATE OR REPLACE PROCEDURE sp_validate_discharge(
+    IN  p_patient_id     INT,
+    OUT p_can_discharge  TINYINT)
+BEGIN
+    DECLARE v_pending_labs      INT          DEFAULT 0;
+    DECLARE v_pending_bills     DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_active_consult    INT          DEFAULT 0;
+    DECLARE v_pending_pharmacy  INT          DEFAULT 0;
+    DECLARE v_open_complaints   INT          DEFAULT 0;
+
+    -- Check pending lab test results
+    SELECT COUNT(*) INTO v_pending_labs
+    FROM lab_tests
+    WHERE patient_id  = p_patient_id
+      AND status      NOT IN ('completed', 'cancelled')
+      AND scheduled_date <= NOW();
+
+    -- Check outstanding billing balance
+    SELECT COALESCE(SUM(total_amount - paid_amount), 0) INTO v_pending_bills
+    FROM billing b
+    JOIN appointments a ON b.appointment_id = a.appointment_id
+    WHERE a.patient_id      = p_patient_id
+      AND b.payment_status != 'paid';
+
+    -- Check for active or in-progress consultations
+    SELECT COUNT(*) INTO v_active_consult
+    FROM consultations
+    WHERE patient_id = p_patient_id
+      AND status     = 'in_progress';
+
+    -- Check for unprocessed pharmacy orders
+    SELECT COUNT(*) INTO v_pending_pharmacy
+    FROM pharmacy_orders
+    WHERE patient_id    = p_patient_id
+      AND order_status NOT IN ('dispensed', 'cancelled');
+
+    -- Check for open patient complaints
+    SELECT COUNT(*) INTO v_open_complaints
+    FROM patient_complaints
+    WHERE patient_id = p_patient_id
+      AND status     = 'open';
+
+    -- Raise specific error for each blocking condition
+    IF v_pending_labs > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: lab results still pending';
+    ELSEIF v_pending_bills > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: outstanding billing balance';
+    ELSEIF v_active_consult > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: consultation still in progress';
+    ELSEIF v_pending_pharmacy > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: pharmacy order not dispensed';
+    ELSEIF v_open_complaints > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: open patient complaint unresolved';
+    ELSE
+        SET p_can_discharge = 1;
+        INSERT INTO discharge_log(patient_id, cleared_at, cleared_by, notes)
+        VALUES (p_patient_id, NOW(), CURRENT_USER(),
+                'All pre-discharge checks passed');
+    END IF;
+END$$
+
+-- Trigger: enforce validation on every discharge insert
+CREATE OR REPLACE TRIGGER trg_before_discharge_insert
+BEFORE INSERT ON discharges
+FOR EACH ROW
+BEGIN
+    DECLARE v_ok TINYINT DEFAULT 0;
+    CALL sp_validate_discharge(NEW.patient_id, v_ok);
+    IF v_ok != 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Discharge blocked: pre-discharge validation failed';
+    END IF;
+END$$
+
+-- Procedure: Admin override for forced discharge
+CREATE OR REPLACE PROCEDURE sp_force_discharge(
+    IN p_patient_id  INT,
+    IN p_admin_id    INT,
+    IN p_reason      VARCHAR(500))
+BEGIN
+    DECLARE v_is_admin INT DEFAULT 0;
+
+    SELECT COUNT(*) INTO v_is_admin
+    FROM staff
+    WHERE staff_id = p_admin_id AND role = 'admin' AND is_active = 1;
+
+    IF v_is_admin = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Only active admins can perform a forced discharge';
+    END IF;
+
+    IF p_reason IS NULL OR TRIM(p_reason) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Override reason is mandatory for forced discharge';
+    END IF;
+
+    INSERT INTO discharges(patient_id, discharge_date,
+                           is_forced, admin_override_by, override_reason)
+    VALUES (p_patient_id, NOW(), 1, p_admin_id, p_reason);
+
+    INSERT INTO discharge_log(patient_id, cleared_at,
+                              cleared_by, is_forced, notes)
+    VALUES (p_patient_id, NOW(), p_admin_id, 1,
+            CONCAT('FORCED: ', p_reason));
+END$$
+
+DELIMITER ;
+-- [F41: end]
+
+
+-- [F41: Extended Discharge Validation System — Farhana Uvro]
+
+DELIMITER $$
+
+-- Procedure: Full pre-discharge validation for a patient
+CREATE OR REPLACE PROCEDURE sp_validate_discharge(
+    IN  p_patient_id     INT,
+    OUT p_can_discharge  TINYINT)
+BEGIN
+    DECLARE v_pending_labs      INT          DEFAULT 0;
+    DECLARE v_pending_bills     DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_active_consult    INT          DEFAULT 0;
+    DECLARE v_pending_pharmacy  INT          DEFAULT 0;
+    DECLARE v_open_complaints   INT          DEFAULT 0;
+
+    -- Check pending lab test results
+    SELECT COUNT(*) INTO v_pending_labs
+    FROM lab_tests
+    WHERE patient_id  = p_patient_id
+      AND status      NOT IN ('completed', 'cancelled')
+      AND scheduled_date <= NOW();
+
+    -- Check outstanding billing balance
+    SELECT COALESCE(SUM(total_amount - paid_amount), 0) INTO v_pending_bills
+    FROM billing b
+    JOIN appointments a ON b.appointment_id = a.appointment_id
+    WHERE a.patient_id      = p_patient_id
+      AND b.payment_status != 'paid';
+
+    -- Check for active or in-progress consultations
+    SELECT COUNT(*) INTO v_active_consult
+    FROM consultations
+    WHERE patient_id = p_patient_id
+      AND status     = 'in_progress';
+
+    -- Check for unprocessed pharmacy orders
+    SELECT COUNT(*) INTO v_pending_pharmacy
+    FROM pharmacy_orders
+    WHERE patient_id    = p_patient_id
+      AND order_status NOT IN ('dispensed', 'cancelled');
+
+    -- Check for open patient complaints
+    SELECT COUNT(*) INTO v_open_complaints
+    FROM patient_complaints
+    WHERE patient_id = p_patient_id
+      AND status     = 'open';
+
+    -- Raise specific error for each blocking condition
+    IF v_pending_labs > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: lab results still pending';
+    ELSEIF v_pending_bills > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: outstanding billing balance';
+    ELSEIF v_active_consult > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: consultation still in progress';
+    ELSEIF v_pending_pharmacy > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: pharmacy order not dispensed';
+    ELSEIF v_open_complaints > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot discharge: open patient complaint unresolved';
+    ELSE
+        SET p_can_discharge = 1;
+        INSERT INTO discharge_log(patient_id, cleared_at, cleared_by, notes)
+        VALUES (p_patient_id, NOW(), CURRENT_USER(),
+                'All pre-discharge checks passed');
+    END IF;
+END$$
+
+-- Trigger: enforce validation on every discharge insert
+CREATE OR REPLACE TRIGGER trg_before_discharge_insert
+BEFORE INSERT ON discharges
+FOR EACH ROW
+BEGIN
+    DECLARE v_ok TINYINT DEFAULT 0;
+    CALL sp_validate_discharge(NEW.patient_id, v_ok);
+    IF v_ok != 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Discharge blocked: pre-discharge validation failed';
+    END IF;
+END$$
+
+-- Procedure: Admin override for forced discharge
+CREATE OR REPLACE PROCEDURE sp_force_discharge(
+    IN p_patient_id  INT,
+    IN p_admin_id    INT,
+    IN p_reason      VARCHAR(500))
+BEGIN
+    DECLARE v_is_admin INT DEFAULT 0;
+
+    SELECT COUNT(*) INTO v_is_admin
+    FROM staff
+    WHERE staff_id = p_admin_id AND role = 'admin' AND is_active = 1;
+
+    IF v_is_admin = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Only active admins can perform a forced discharge';
+    END IF;
+
+    IF p_reason IS NULL OR TRIM(p_reason) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Override reason is mandatory for forced discharge';
+    END IF;
+
+    INSERT INTO discharges(patient_id, discharge_date,
+                           is_forced, admin_override_by, override_reason)
+    VALUES (p_patient_id, NOW(), 1, p_admin_id, p_reason);
+
+    INSERT INTO discharge_log(patient_id, cleared_at,
+                              cleared_by, is_forced, notes)
+    VALUES (p_patient_id, NOW(), p_admin_id, 1,
+            CONCAT('FORCED: ', p_reason));
+END$$
+
+DELIMITER ;
+-- [F41: end]

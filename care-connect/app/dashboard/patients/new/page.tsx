@@ -48,8 +48,11 @@ export default function NewPatientPage() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto relative">
-            <BackButton href="/dashboard/patients" label="Back to Patients" />
+        <div className="max-w-3xl mx-auto relative space-y-2">
+            <div className="flex items-center gap-4">
+                <BackButton href="/dashboard" label="Back to Dashboard" />
+                <BackButton href="/dashboard/patients" label="Back to Patients" />
+            </div>
             <div className="mb-8">
                 <h2 className="text-2xl font-bold text-slate-800">Register New Patient</h2>
                 <p className="text-slate-500">Create a new patient record in the system.</p>

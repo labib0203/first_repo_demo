@@ -28,7 +28,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
                     <h2 className="text-2xl font-bold text-slate-800">Patients Directory</h2>
                     <p className="text-slate-500">Manage patient records and profiles.</p>
                 </div>
-                {role !== 'Admin' && (
+                {role !== 'Admin' && role !== 'Pharmacist' && role !== 'Pathologist' && (
                     <Link href="/dashboard/patients/new" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
                         <Plus size={18} /> Add Patient
                     </Link>

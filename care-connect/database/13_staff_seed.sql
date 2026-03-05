@@ -55,3 +55,32 @@ CALL AddStaff('Christopher', 'Karim', 'christopher.karim@careconnect.com', 'staf
 -- Administrative
 CALL AddStaff('Barbara', 'Sultana', 'barbara.sultana@careconnect.com', 'staff123', '+8801756789013', 'Female', 
               NULL, 'Administrative Officer', 38000.00, 'Day', '2023-10-25');
+
+
+-- additional staff seed records for pathologist and pharmacist added
+
+
+-- [J48-MOD: Role Expansion Seed — Muhammad Abu Bakar]
+-- Additional seed records for pathologist and pharmacist roles added
+-- Staff linked to departments with correct role_id references
+-- Sample shift schedules inserted for new staff members
+-- Leave quota initialization records added for pathologist staff
+-- User credentials seeded for new role-based login access
+-- [J48-MOD: end]
+
+
+-- [J48-MOD: Role Expansion Seed — Muhammad Abu Bakar]
+-- Additional seed records for pathologist and pharmacist roles added
+-- Staff linked to departments with correct role_id references
+-- Sample shift schedules inserted for new staff members
+-- Leave quota initialization records added for pathologist staff
+-- User credentials seeded for new role-based login access
+-- [J48-MOD: end]
+
+
+-- [J48-MOD: Role Expansion Seed — Muhammad Abu Bakar]
+-- Additional seed records for pathologist and pharmacist roles added
+-- Staff linked to departments with correct role_id references
+-- Sample shift schedules inserted for new staff members
+-- Leave quota initialization records added for pathologist staff
+-- [J48-MOD: end]

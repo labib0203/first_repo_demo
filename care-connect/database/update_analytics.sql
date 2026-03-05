@@ -55,3 +55,5 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- Final analytics run and summary freeze

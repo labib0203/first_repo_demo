@@ -1,6 +1,7 @@
 import { getReceptionAvailableRooms, getAllPatientsList } from '@/lib/actions';
 import { Building2, Stethoscope, AlertCircle } from 'lucide-react';
 import ReceptionRoomList from './ReceptionClient';
+import BackButton from '@/components/ui/BackButton';
 
 export default async function ReceptionPage() {
     let availableRooms = [];
@@ -16,7 +17,8 @@ export default async function ReceptionPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col gap-2">
+            <BackButton href="/dashboard" label="Back to Dashboard" />
+            <div className="flex flex-col gap-2 mt-4">
                 <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <Building2 className="w-6 h-6 text-blue-600" />
                     Reception Desk

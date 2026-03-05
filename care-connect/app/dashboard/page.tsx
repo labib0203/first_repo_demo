@@ -1,5 +1,5 @@
 import { getDashboardStats, getRecentAppointments, getActiveDoctors } from '@/lib/actions';
-import { Users, Calendar, DollarSign, Activity, Plus } from 'lucide-react';
+import { Users, Calendar, Activity, Plus, Microscope } from 'lucide-react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 
@@ -44,8 +44,8 @@ export default async function DashboardPage() {
                     <h2 className="text-2xl font-bold text-slate-800">Dashboard Overview</h2>
                     <p className="text-slate-500">Welcome back, here's what's happening today.</p>
                 </div>
-                {/* Action Buttons: Visible only if NOT Admin */}
-                {role !== 'Admin' && (
+                {/* Action Buttons: Visible only if NOT Admin, NOT Pharmacist, and NOT Pathologist */}
+                {role !== 'Admin' && role !== 'Pharmacist' && role !== 'Pathologist' && (
                     <div className="flex gap-3">
                         <Link href="/dashboard/appointments/new" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
                             <Plus size={18} /> New Appointment
@@ -58,13 +58,43 @@ export default async function DashboardPage() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Link href="/dashboard/appointments?filter=today" className="block focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-xl">
-                    <StatCard title="Today's Appointments" value={stats.todayAppointments} icon={<Calendar className="text-purple-600" />} color="purple" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Link href="/dashboard/appointments" className="block focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-xl">
+                    <StatCard
+                        title={role === 'Pathologist' ? 'Lab Test Bookings' : "Today's Appointments"}
+                        value={role === 'Pathologist' ? (stats as any).todayLabTests : stats.todayAppointments}
+                        icon={<Calendar className="text-purple-600" />}
+                        color="purple"
+                    />
                 </Link>
-                <Link href="/dashboard/billing" className="block focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-xl">
-                    <StatCard title="Pending Revenue" value={`৳${stats.pendingRevenue}`} icon={<span className="text-orange-600 font-bold text-xl">৳</span>} color="orange" />
+                <Link href={role === 'Pathologist' ? '/dashboard/lab-management' : '/dashboard/billing'} className="block focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-xl">
+                    <StatCard
+                        title="Pending Revenue"
+                        value={`৳${stats.pendingRevenue}`}
+                        icon={<span className="text-orange-600 font-bold text-xl">৳</span>}
+                        color="orange"
+                    />
                 </Link>
+                {(role === 'Admin' || role === 'Pathologist') && (
+                    <div className="block focus:outline-none rounded-xl">
+                        <StatCard
+                            title="Total Earnings"
+                            value={`৳${(stats as any).totalEarnings}`}
+                            icon={<span className="text-emerald-600 font-bold text-xl">৳</span>}
+                            color="emerald"
+                        />
+                    </div>
+                )}
+                {role === 'Pathologist' && (
+                    <Link href="/dashboard/tests" className="block focus:outline-none focus:ring-2 focus:ring-rose-500 rounded-xl">
+                        <StatCard
+                            title="Available Lab Tests"
+                            value="View Catalog"
+                            icon={<Microscope className="text-rose-600" />}
+                            color="rose"
+                        />
+                    </Link>
+                )}
             </div>
         </div>
     );

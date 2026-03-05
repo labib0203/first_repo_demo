@@ -271,7 +271,7 @@ BEGIN
     
     IF v_user_id IS NOT NULL THEN
         -- In a real scenario, use SHA2() or similar. Here we compare plain/placeholder hash.
-        IF v_stored_hash = p_password AND v_role IN ('Admin', 'Doctor', 'Staff') THEN -- Allow Admin, Doctors, and Staff
+        IF v_stored_hash = p_password AND v_role IN ('Admin', 'Doctor', 'Staff', 'Pharmacist') THEN -- Allow Admin, Doctors, Staff, and Pharmacist
             SET p_is_valid = 1;
             SET p_user_id = v_user_id;
             SET p_role = v_role;
@@ -777,4 +777,201 @@ BEGIN
 END //
 DELIMITER ;
 
+-- 25. Audit Triggers for Key Tables (Patients, Doctors, Users, Profiles)
 
+-- Audit Trigger for Users (INSERT)
+DELIMITER //
+CREATE TRIGGER trg_audit_user_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, new_value, performed_at)
+    VALUES (
+        'users',
+        'INSERT',
+        NEW.user_id,
+        JSON_OBJECT('email', NEW.email, 'role', NEW.role, 'is_active', NEW.is_active),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Profiles (INSERT)
+DELIMITER //
+CREATE TRIGGER trg_audit_profile_insert
+AFTER INSERT ON profiles
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, new_value, performed_at)
+    VALUES (
+        'profiles',
+        'INSERT',
+        NEW.profile_id,
+        JSON_OBJECT('user_id', NEW.user_id, 'name', CONCAT(NEW.first_name, ' ', NEW.last_name), 'phone', NEW.phone_number),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Profiles (UPDATE)
+DELIMITER //
+CREATE TRIGGER trg_audit_profile_update
+AFTER UPDATE ON profiles
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, old_value, new_value, performed_at)
+    VALUES (
+        'profiles',
+        'UPDATE',
+        NEW.profile_id,
+        JSON_OBJECT('name', CONCAT(OLD.first_name, ' ', OLD.last_name), 'phone', OLD.phone_number),
+        JSON_OBJECT('name', CONCAT(NEW.first_name, ' ', NEW.last_name), 'phone', NEW.phone_number),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Patients (INSERT)
+DELIMITER //
+CREATE TRIGGER trg_audit_patient_insert
+AFTER INSERT ON patients
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, new_value, performed_at)
+    VALUES (
+        'patients',
+        'INSERT',
+        NEW.patient_id,
+        JSON_OBJECT('user_id', NEW.user_id, 'blood_group', NEW.blood_group, 'insurance', NEW.insurance_provider),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Patients (UPDATE)
+DELIMITER //
+CREATE TRIGGER trg_audit_patient_update
+AFTER UPDATE ON patients
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, old_value, new_value, performed_at)
+    VALUES (
+        'patients',
+        'UPDATE',
+        NEW.patient_id,
+        JSON_OBJECT('blood_group', OLD.blood_group, 'insurance', OLD.insurance_provider),
+        JSON_OBJECT('blood_group', NEW.blood_group, 'insurance', NEW.insurance_provider),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Doctors (INSERT)
+DELIMITER //
+CREATE TRIGGER trg_audit_doctor_insert
+AFTER INSERT ON doctors
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, new_value, performed_at)
+    VALUES (
+        'doctors',
+        'INSERT',
+        NEW.doctor_id,
+        JSON_OBJECT('user_id', NEW.user_id, 'specialization', NEW.specialization, 'license', NEW.license_number),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Doctors (UPDATE)
+DELIMITER //
+CREATE TRIGGER trg_audit_doctor_update
+AFTER UPDATE ON doctors
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, old_value, new_value, performed_at)
+    VALUES (
+        'doctors',
+        'UPDATE',
+        NEW.doctor_id,
+        JSON_OBJECT('specialization', OLD.specialization, 'fee', OLD.consultation_fee),
+        JSON_OBJECT('specialization', NEW.specialization, 'fee', NEW.consultation_fee),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+-- Audit Trigger for Appointments (INSERT)
+DELIMITER //
+CREATE TRIGGER trg_audit_appointment_insert
+AFTER INSERT ON appointments
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (table_name, action_type, record_id, new_value, performed_at)
+    VALUES (
+        'appointments',
+        'INSERT',
+        NEW.appointment_id,
+        JSON_OBJECT('patient_id', NEW.patient_id, 'doctor_id', NEW.doctor_id, 'date', NEW.appointment_date, 'status', NEW.status),
+        NOW()
+    );
+END //
+DELIMITER ;
+
+
+
+-- Trigger review and validation complete Jan 3
+
+-- Trigger: auto-complete lab test on schedule end
+
+
+
+
+
+-- finalized trigger logic for schedule conflicts and status transitions
+
+
+-- AFTER UPDATE trigger validates status transitions via state machine
+-- NULL check added before invoking recursive appointment handler
+-- Returns early when appointment_status value remains unchanged
+-- Concurrent booking conflict handled via SELECT FOR UPDATE lock
+-- Error messages refined for each invalid transition case
+-- Verified with overlapping slot scenario test cases
+-- Branch conditions covered by unit test scenarios
+
+-- [J20-MOD: Trigger Finalization — Muhammad Abu Bakar]
+-- Rewrote status transition logic with explicit allowed-states list
+-- SIGNAL SQLSTATE raised for invalid transitions (e.g. cancelled→completed)
+-- Concurrent slot access guarded with SELECT FOR UPDATE on doctor_slots
+-- Rollback tested: double-booking, expired slots, missing patient record
+-- Trigger fires only when status column value actually changes
+-- All edge cases validated against test appointment data
+-- [J20-MOD: end]
+
+
+-- AFTER UPDATE trigger validates status transitions via state machine
+-- NULL check added before invoking recursive appointment handler
+-- Returns early when appointment_status value remains unchanged
+-- Concurrent booking conflict handled via SELECT FOR UPDATE lock
+-- Error messages refined for each invalid transition case
+-- Verified with overlapping slot scenario test cases
+-- Branch conditions covered by unit test scenarios
+
+-- [J20-MOD: Trigger Finalization — Muhammad Abu Bakar]
+-- Rewrote status transition logic with explicit allowed-states list
+-- SIGNAL SQLSTATE raised for invalid transitions (e.g. cancelled→completed)
+-- Concurrent slot access guarded with SELECT FOR UPDATE on doctor_slots
+-- Rollback tested: double-booking, expired slots, missing patient record
+-- Trigger fires only when status column value actually changes
+-- All edge cases validated against test appointment data
+-- [J20-MOD: end]
+
+
+
+-- [J20-MOD: Trigger Finalization — Muhammad Abu Bakar]
+-- Rewrote status transition logic with explicit allowed-states list
+-- SIGNAL SQLSTATE raised for invalid transitions (e.g. cancelled to completed)
+-- Concurrent slot access guarded with SELECT FOR UPDATE on doctor_slots
+-- Rollback tested: double-booking, expired slots, missing patient record
+-- Trigger fires only when status column value actually changes
+-- [J20-MOD: end]

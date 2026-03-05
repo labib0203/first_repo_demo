@@ -1,14 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { saveConsultation } from '@/lib/actions';
-import { Plus, Trash2, Save, FileText, Activity } from 'lucide-react';
+import { Plus, Trash2, Save, FileText, Activity, Clock, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+
+function useCountdown(targetDate: Date) {
+    const [timeLeft, setTimeLeft] = useState<number>(targetDate.getTime() - Date.now());
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const remaining = targetDate.getTime() - Date.now();
+            setTimeLeft(remaining);
+            if (remaining <= 0) clearInterval(timer);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [targetDate]);
+    return timeLeft;
+}
+
+function formatCountdown(ms: number) {
+    if (ms <= 0) return null;
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+}
 
 export default function ConsultationForm({ appointment, medicines }: { appointment: any, medicines: any[] }) {
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
     const [rows, setRows] = useState<any[]>([{ id: 1, medicineId: '', dosage: '', frequency: '1-0-1', duration: 7 }]);
+
+    const appointmentTime = new Date(appointment.appointment_date);
+    const msLeft = useCountdown(appointmentTime);
+    const isTooEarly = msLeft > 0;
+    const countdown = formatCountdown(msLeft);
 
     const addRow = () => {
         setRows([...rows, { id: Date.now(), medicineId: '', dosage: '', frequency: '1-0-1', duration: 7 }]);
@@ -23,8 +51,8 @@ export default function ConsultationForm({ appointment, medicines }: { appointme
     };
 
     const handleSubmit = async (formData: FormData) => {
+        if (isTooEarly) return;
         setIsSaving(true);
-        // Append medicines as JSON
         formData.append('medicines', JSON.stringify(rows));
 
         const res = await saveConsultation(formData);
@@ -40,8 +68,27 @@ export default function ConsultationForm({ appointment, medicines }: { appointme
         <form action={handleSubmit} className="space-y-8 max-w-5xl mx-auto pb-12">
             <input type="hidden" name="appointmentId" value={appointment.appointment_id} />
 
+            {/* Time Guard Banner */}
+            {isTooEarly && (
+                <div className="flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 shrink-0">
+                        <Clock className="text-amber-600" size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-amber-800 text-sm">Appointment Not Started Yet</p>
+                        <p className="text-amber-700 text-xs mt-0.5">
+                            Consultation can only be completed after the scheduled appointment time.
+                        </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <div className="text-xs text-amber-600 font-semibold uppercase tracking-wider mb-0.5">Time Remaining</div>
+                        <div className="font-mono font-bold text-amber-800 text-xl">{countdown}</div>
+                    </div>
+                </div>
+            )}
+
             {/* Vitals Section */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div className={`bg-white rounded-xl border border-slate-200 shadow-sm p-6 ${isTooEarly ? 'opacity-60 pointer-events-none' : ''}`}>
                 <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
                     <Activity className="text-blue-500" /> Vitals & Observation
                 </h3>
@@ -62,7 +109,7 @@ export default function ConsultationForm({ appointment, medicines }: { appointme
             </div>
 
             {/* Diagnosis Section */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div className={`bg-white rounded-xl border border-slate-200 shadow-sm p-6 ${isTooEarly ? 'opacity-60 pointer-events-none' : ''}`}>
                 <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
                     <FileText className="text-purple-500" /> Clinical Notes
                 </h3>
@@ -83,7 +130,7 @@ export default function ConsultationForm({ appointment, medicines }: { appointme
             </div>
 
             {/* Prescription Section */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden ${isTooEarly ? 'opacity-60 pointer-events-none' : ''}`}>
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <h3 className="font-bold text-lg text-slate-800">Prescription (Rx)</h3>
                     <button type="button" onClick={addRow} className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-blue-700">
@@ -167,13 +214,18 @@ export default function ConsultationForm({ appointment, medicines }: { appointme
                 </button>
                 <button
                     type="submit"
-                    disabled={isSaving}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center gap-2"
+                    disabled={isSaving || isTooEarly}
+                    title={isTooEarly ? `Available in ${countdown}` : 'Complete consultation'}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                    <Save size={18} />
-                    {isSaving ? 'Saving Record...' : 'Complete Consultation'}
+                    {isTooEarly ? (
+                        <><Clock size={18} /> Locked — {countdown}</>
+                    ) : (
+                        <><Save size={18} /> {isSaving ? 'Saving Record...' : 'Complete Consultation'}</>
+                    )}
                 </button>
             </div>
         </form>
     );
 }
+

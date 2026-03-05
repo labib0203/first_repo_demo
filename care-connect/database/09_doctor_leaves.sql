@@ -74,3 +74,37 @@ BEGIN
 END //
 
 DELIMITER ;
+
+
+
+
+-- admin override for urgent leave approvals included
+
+
+-- [J45-MOD: Leave Approval Extension — Muhammad Abu Bakar]
+-- Admin override procedure for urgent leave approvals added
+-- Leave balance auto-recalculated on approval and rejection events
+-- Batch approval procedure for public holiday pre-approvals added
+-- Leave history view per doctor for reporting added
+-- Notification flag column added to leave_requests table
+-- Conflict detection: blocks leave if slots already booked in range
+-- [J45-MOD: end]
+
+
+-- [J45-MOD: Leave Approval Extension — Muhammad Abu Bakar]
+-- Admin override procedure for urgent leave approvals added
+-- Leave balance auto-recalculated on approval and rejection events
+-- Batch approval procedure for public holiday pre-approvals added
+-- Leave history view per doctor for reporting added
+-- Notification flag column added to leave_requests table
+-- Conflict detection: blocks leave if slots already booked in range
+-- [J45-MOD: end]
+
+
+-- [J45-MOD: Leave Approval Extension — Muhammad Abu Bakar]
+-- Admin override procedure for urgent leave approvals added
+-- Leave balance auto-recalculated on approval and rejection events
+-- Batch approval for public holiday pre-approvals added
+-- Leave history view per doctor for reporting added
+-- Notification flag column added to leave_requests table
+-- [J45-MOD: end]

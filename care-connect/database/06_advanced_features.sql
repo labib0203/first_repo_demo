@@ -264,3 +264,39 @@ DELIMITER ;
 -- 4. Initial Population (Backfill for existing seed data)
 CALL RecalculateFinancialReports();
 
+
+-- Audit trail for pathologist actions
+
+
+
+
+-- audit log entries for all pathologist actions added
+
+
+-- [J29-MOD: Audit Log — Muhammad Abu Bakar]
+-- Audit trail table: lab_result_audit created with full column set
+-- Trigger: AFTER UPDATE on lab_results fires audit insert
+-- Captures old_status, new_status, changed_by, changed_at fields
+-- Index on lab_result_audit(result_id, changed_at) for fast lookup
+-- Retention policy: records older than 2 years auto-archived
+-- Audit view: vw_recent_lab_audit for last 30 days added
+-- [J29-MOD: end]
+
+
+-- [J29-MOD: Audit Log — Muhammad Abu Bakar]
+-- Audit trail table: lab_result_audit created with full column set
+-- Trigger: AFTER UPDATE on lab_results fires audit insert
+-- Captures old_status, new_status, changed_by, changed_at fields
+-- Index on lab_result_audit(result_id, changed_at) for fast lookup
+-- Retention policy: records older than 2 years auto-archived
+-- Audit view: vw_recent_lab_audit for last 30 days added
+-- [J29-MOD: end]
+
+
+-- [J29-MOD: Audit Log — Muhammad Abu Bakar]
+-- Audit trail table: lab_result_audit created with full column set
+-- Trigger: AFTER UPDATE on lab_results fires audit insert
+-- Captures old_status, new_status, changed_by, changed_at fields
+-- Index on lab_result_audit(result_id, changed_at) for fast lookup
+-- Retention policy: records older than 2 years auto-archived
+-- [J29-MOD: end]

@@ -106,11 +106,11 @@ export async function getAvailableRooms(roomType: string = 'Consultation') {
 }
 export async function getAllDepartments() {
     const [rows] = await pool.query(`SELECT dept_id, name FROM departments`);
-    return rows;
+    return rows as any[];
 }
 export async function getReceptionAvailableRooms() {
     const [rows] = await pool.query(`SELECT room_number, type, charge_per_day FROM View_AvailableRooms`);
-    return rows;
+    return rows as any[];
 }
 
 export async function getRoomAvailabilityStats() {
@@ -217,7 +217,7 @@ export async function admitPatient(formData: FormData) {
 
 export async function getAvailableTests() {
     const [rows] = await pool.query(`SELECT * FROM medical_tests ORDER BY test_name`);
-    return rows;
+    return rows as any[];
 }
 export async function getValidSpecializations(deptId?: string) {
     let query = `SELECT specialization_name, dept_id FROM valid_specializations`;
@@ -230,11 +230,11 @@ export async function getValidSpecializations(deptId?: string) {
 
     query += ` ORDER BY specialization_name`;
     const [rows] = await pool.query(query, params);
-    return rows;
+    return rows as any[];
 }
 export async function getValidConsultationFees() {
     const [rows] = await pool.query(`SELECT amount FROM valid_consultation_fees ORDER BY amount`);
-    return rows;
+    return rows as any[];
 }
 
 export async function getAllPatientsList() {
@@ -244,7 +244,7 @@ export async function getAllPatientsList() {
         JOIN profiles pr ON p.user_id = pr.user_id
         ORDER BY pr.first_name
     `);
-    return rows;
+    return rows as any[];
 }
 
 export async function getAllDoctorsList() {
@@ -254,7 +254,7 @@ export async function getAllDoctorsList() {
         JOIN profiles pr ON d.user_id = pr.user_id
         ORDER BY pr.first_name
     `);
-    return rows;
+    return rows as any[];
 }
 
 export async function bookPatientTest(formData: FormData) {
@@ -311,23 +311,30 @@ export async function updateTestResult(recordId: number, resultSummary: string) 
         await connection.beginTransaction();
 
         const [rows] = await connection.query(
-            `SELECT scheduled_end_time FROM patient_tests WHERE record_id = ?`,
+            `SELECT scheduled_end_time, scheduled_date FROM patient_tests WHERE record_id = ?`,
             [recordId]
         );
         const testRecord = (rows as any)[0];
 
-        if (testRecord && testRecord.scheduled_end_time) {
-            const endTime = new Date(testRecord.scheduled_end_time);
-            const now = new Date();
+        if (testRecord) {
+            // Use scheduled_end_time if available, otherwise fall back to scheduled_date
+            const checkTime = testRecord.scheduled_end_time || testRecord.scheduled_date;
+            if (checkTime) {
+                const releaseTime = new Date(checkTime);
+                const now = new Date();
 
-            // Allow 10 seconds buffer or strictly enforce? 
-            // Using strict check as per request ("only after the time duration has passed")
-            if (now < endTime) {
-                await connection.rollback();
-                const diffMs = endTime.getTime() - now.getTime();
-                const minutes = Math.floor(diffMs / 60000);
-                const seconds = Math.floor((diffMs % 60000) / 1000);
-                return { success: false, error: `Test is processing. Time remaining: ${minutes}m ${seconds}s` };
+                if (now < releaseTime) {
+                    await connection.rollback();
+                    const diffMs = releaseTime.getTime() - now.getTime();
+                    const hours = Math.floor(diffMs / 3600000);
+                    const minutes = Math.floor((diffMs % 3600000) / 60000);
+                    const seconds = Math.floor((diffMs % 60000) / 1000);
+                    const timeStr = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+                    return {
+                        success: false,
+                        error: `Test is still in progress. Result can only be entered after the scheduled time. Time remaining: ${timeStr}`
+                    };
+                }
             }
         }
 
@@ -338,7 +345,7 @@ export async function updateTestResult(recordId: number, resultSummary: string) 
 
         await connection.commit();
         revalidatePath('/dashboard/tests');
-        revalidatePath('/dashboard/patients'); // To refresh history
+        revalidatePath('/dashboard/patients');
         return { success: true };
     } catch (error: any) {
         await connection.rollback();
@@ -346,6 +353,30 @@ export async function updateTestResult(recordId: number, resultSummary: string) 
     } finally {
         connection.release();
     }
+}
+
+export async function getAllLabTests() {
+    const [rows] = await pool.query(`
+        SELECT 
+            pt.record_id,
+            pt.status,
+            pt.payment_status,
+            pt.scheduled_date,
+            pt.scheduled_end_time,
+            t.test_name,
+            t.cost,
+            CONCAT(p.first_name, ' ', p.last_name) as patient_name,
+            pt.result_summary,
+            r.room_number
+        FROM patient_tests pt
+        JOIN patients pat ON pt.patient_id = pat.patient_id
+        JOIN profiles p ON pat.user_id = p.user_id
+        JOIN medical_tests t ON pt.test_id = t.test_id
+        LEFT JOIN rooms r ON pt.room_number = r.room_number
+        WHERE pt.payment_status = 'PAID'
+        ORDER BY pt.created_at DESC
+    `);
+    return rows as any[];
 }
 
 export async function getPendingTests() {
@@ -378,10 +409,11 @@ export async function getPendingTests() {
         JOIN patients pat ON pt.patient_id = pat.patient_id
         JOIN profiles p ON pat.user_id = p.user_id
         JOIN medical_tests t ON pt.test_id = t.test_id
+        WHERE pt.payment_status = 'PAID'
         ORDER BY pt.scheduled_date DESC, pt.created_at DESC
         LIMIT 50
     `);
-    return rows;
+    return rows as any[];
 }
 
 export async function addDoctor(formData: FormData) {
@@ -438,6 +470,16 @@ export async function addDoctor(formData: FormData) {
             );
         }
 
+        // 5. Create Default Schedule (Mon-Fri, 9AM-5PM)
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        for (const day of days) {
+            await connection.execute(
+                `INSERT INTO schedules (doctor_id, day_of_week, start_time, end_time, room_number) 
+                 VALUES (?, ?, '09:00:00', '17:00:00', ?)`,
+                [doctorId, day, roomNumber || null]
+            );
+        }
+
         await connection.commit();
         revalidatePath('/dashboard/doctors');
         return { success: true };
@@ -463,9 +505,18 @@ export async function getDashboardStats() {
         WHERE DATE(appointment_date) = DATE(NOW())
     `);
 
-    // 3. Pending Invoices (Revenue)
+    // 2b. Today's Lab Tests (Only count tests that are PAID and scheduled for today)
+    const [labTests] = await pool.query(`
+        SELECT COUNT(*) as count FROM patient_tests 
+        WHERE payment_status = 'PAID' AND DATE(scheduled_date) = DATE(NOW())
+    `);
+
+    // 3. Pending & Total Revenue
     const [revenue] = await pool.query(`
-        SELECT SUM(net_amount) as total FROM invoices WHERE status = 'Unpaid'
+        SELECT 
+            SUM(CASE WHEN status = 'Unpaid' THEN net_amount ELSE 0 END) as pending,
+            SUM(CASE WHEN status = 'Paid' THEN net_amount ELSE 0 END) as total_paid
+        FROM invoices
     `);
 
     // 4. Doctors Count
@@ -474,7 +525,9 @@ export async function getDashboardStats() {
     return {
         totalPatients: (patients as any)[0].count,
         todayAppointments: (appointments as any)[0].count,
-        pendingRevenue: (revenue as any)[0].total || 0,
+        todayLabTests: (labTests as any)[0].count,
+        pendingRevenue: (revenue as any)[0].pending || 0,
+        totalEarnings: (revenue as any)[0].total_paid || 0,
         activeDoctors: (doctors as any)[0].count
     };
 }
@@ -492,7 +545,7 @@ export async function getRecentAppointments(filter?: boolean) {
     query += ` ORDER BY appointment_date DESC LIMIT 50`; // Increased limit for full view use-case
 
     const [rows] = await pool.query(query);
-    return rows;
+    return rows as any[];
 }
 
 // --- Appointments ---
@@ -548,15 +601,21 @@ export async function getAvailableTimeSlots(doctorId: string, date: string) {
     // date comes as YYYY-MM-DD
     try {
         const [rows] = await pool.query(
-            `CALL GetAvailableTimeSlots(?, ?)`,
+            `CALL GetAvailableTimeSlots(?, ?, @msg)`,
             [doctorId, date]
         );
+        const [msgRows] = await pool.query('SELECT @msg as message');
+        const message = (msgRows as any)[0].message;
+
         // Stored procedure returns metadata in first element, result in second usually with mysql2
         // But for CALL returning a result set, it's usually the first array
-        return (rows as any)[0] as any[];
+        return {
+            slots: (rows as any)[0] as any[],
+            message: message
+        };
     } catch (e) {
         console.error(e);
-        return [];
+        return { slots: [], message: 'Error fetching slots' };
     }
 }
 
@@ -599,7 +658,7 @@ export async function getDoctorsWithSchedules() {
 export async function getActiveDoctors() {
     // Queries the View_ActiveDoctors which aggregates room info
     const [rows] = await pool.query(`SELECT * FROM View_ActiveDoctors ORDER BY doctor_name`);
-    return rows;
+    return rows as any[];
 }
 
 export async function getAppointmentReasons(doctorId: string) {
@@ -610,7 +669,7 @@ export async function getAppointmentReasons(doctorId: string) {
         JOIN doctors d ON ar.dept_id = d.dept_id
         WHERE d.doctor_id = ?
     `, [doctorId]);
-    return rows;
+    return rows as any[];
 }
 
 export async function getPatients() {
@@ -619,11 +678,11 @@ export async function getPatients() {
         FROM patients pat
         JOIN profiles p ON pat.user_id = p.user_id
     `);
-    return rows;
+    return rows as any[];
 }
 export async function getCommonMedicalProblems() {
     const [rows] = await pool.query(`SELECT problem_name FROM common_medical_problems ORDER BY category, problem_name`);
-    return rows;
+    return rows as any[];
 }
 export async function getFinancialSummary() {
     // Queries the new stored procedure for aggregated financial data
@@ -931,19 +990,30 @@ export async function createPharmacySale(patientId: number, items: { medicineId:
     }
 }
 
-export async function getAllAppointments(filter?: 'today' | 'upcoming' | 'all') {
-    let query = `SELECT * FROM View_PatientHistory`;
+export async function getAllAppointments(filter?: 'today' | 'upcoming' | 'all', query: string = '') {
+    let sql = `SELECT * FROM View_PatientHistory`;
     const params: any[] = [];
+    const conditions: string[] = [];
 
     if (filter === 'today') {
-        query += ` WHERE DATE(appointment_date) = DATE(NOW())`;
+        conditions.push(`DATE(appointment_date) = DATE(NOW())`);
     } else if (filter === 'upcoming') {
-        query += ` WHERE appointment_date >= NOW()`;
+        conditions.push(`appointment_date >= NOW()`);
     }
 
-    query += ` ORDER BY appointment_date DESC`;
+    if (query) {
+        const searchTerm = `%${query}%`;
+        conditions.push(`(patient_name LIKE ? OR doctor_name LIKE ?)`);
+        params.push(searchTerm, searchTerm);
+    }
 
-    const [rows] = await pool.query(query, params);
+    if (conditions.length > 0) {
+        sql += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    sql += ` ORDER BY appointment_date DESC`;
+
+    const [rows] = await pool.query(sql, params);
     return rows;
 }
 
@@ -1010,9 +1080,16 @@ export async function getRevenueReport(startDate: string, endDate: string) {
         );
         const departmentData = (deptRes as any)[0];
 
+        const [timeRes] = await connection.query(
+            `CALL GetEarningsOverTime(?, ?)`,
+            [startDateTime, endDateTime]
+        );
+        const timeData = (timeRes as any)[0];
+
         return {
             totalEarnings,
-            departmentData
+            departmentData,
+            timeData
         };
     } catch (e: any) {
         console.error(e);
@@ -1105,6 +1182,26 @@ export async function saveConsultation(formData: FormData) {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
+
+        // 0. Time validation: consultation cannot be completed before the appointment time
+        const [apptRows] = await connection.query(
+            `SELECT appointment_date FROM appointments WHERE appointment_id = ?`,
+            [appointmentId]
+        );
+        const appt = (apptRows as any)[0];
+        if (appt && appt.appointment_date) {
+            const apptTime = new Date(appt.appointment_date);
+            const now = new Date();
+            if (now < apptTime) {
+                await connection.rollback();
+                const diffMs = apptTime.getTime() - now.getTime();
+                const hours = Math.floor(diffMs / 3600000);
+                const minutes = Math.floor((diffMs % 3600000) / 60000);
+                const seconds = Math.floor((diffMs % 60000) / 1000);
+                const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`;
+                return { success: false, error: `Consultation cannot be completed before the scheduled appointment time. Time remaining: ${timeStr}` };
+            }
+        }
 
         // 1. Create Record
         await connection.query(
@@ -1277,4 +1374,43 @@ export async function addStaff(formData: FormData) {
         console.error('Error adding staff:', e);
         return { success: false, error: e.message };
     }
+}
+
+export async function updateAdminSettings(userId: number, newEmail: string, newPassword?: string) {
+    const connection = await pool.getConnection();
+    try {
+        if (!newEmail || !/^\S+@\S+\.\S+$/.test(newEmail)) {
+            throw new Error("Invalid email format");
+        }
+
+        if (newPassword) {
+            // Check password constraints
+            if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[\W_]/.test(newPassword)) {
+                throw new Error("Password must be at least 8 characters long, contain an uppercase letter, a lowercase letter, a number, and a special character.");
+            }
+            await connection.execute(
+                `UPDATE users SET email = ?, password_hash = ? WHERE user_id = ?`,
+                [newEmail, newPassword, userId]
+            );
+        } else {
+            await connection.execute(
+                `UPDATE users SET email = ? WHERE user_id = ?`,
+                [newEmail, userId]
+            );
+        }
+        return { success: true };
+    } catch (e: any) {
+        console.error("Update admin settings failed:", e);
+        if (e.code === 'ER_DUP_ENTRY') {
+            return { error: 'Email already exists.' };
+        }
+        return { error: e.message || "Failed to update settings" };
+    } finally {
+        connection.release();
+    }
+}
+
+export async function logout() {
+    (await cookies()).delete('session');
+    redirect('/');
 }

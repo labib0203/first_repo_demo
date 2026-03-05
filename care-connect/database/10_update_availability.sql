@@ -127,3 +127,39 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- Pathologist daily schedule availability
+
+
+
+
+-- pathologist daily schedule slots included in availability update
+
+
+-- [J37-MOD: Pathologist Availability — Muhammad Abu Bakar]
+-- Pathologist daily slots included in availability update cycle
+-- Slot expiry: past-date available slots auto-cancelled by procedure
+-- Bulk reset procedure for public holidays and special closures added
+-- Cross-check with doctor_leaves before marking slots as available
+-- vw_available_today view updated to include pathologist slots
+-- Availability refresh scheduled proc added for daily cron use
+-- [J37-MOD: end]
+
+
+-- [J37-MOD: Pathologist Availability — Muhammad Abu Bakar]
+-- Pathologist daily slots included in availability update cycle
+-- Slot expiry: past-date available slots auto-cancelled by procedure
+-- Bulk reset procedure for public holidays and special closures added
+-- Cross-check with doctor_leaves before marking slots as available
+-- vw_available_today view updated to include pathologist slots
+-- Availability refresh scheduled proc added for daily cron use
+-- [J37-MOD: end]
+
+
+-- [J37-MOD: Pathologist Availability — Muhammad Abu Bakar]
+-- Pathologist daily slots included in availability update cycle
+-- Slot expiry: past-date available slots auto-cancelled
+-- Bulk reset procedure for public holidays added
+-- Cross-check with doctor_leaves before marking slots active
+-- vw_available_today updated to include pathologist slots
+-- [J37-MOD: end]

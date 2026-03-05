@@ -8,13 +8,15 @@ import { ClipboardList, CheckCircle, Search } from 'lucide-react';
 import Link from 'next/link';
 import BackButton from '@/components/ui/BackButton';
 
-export function ResultsClient({ orders }: { orders: any[] }) {
+export function ResultsClient({ orders, role }: { orders: any[], role: string | null }) {
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [resultText, setResultText] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
+    const isAuthorized = role === 'Pathologist' || role === 'Admin';
+
     async function handleSave() {
-        if (!selectedOrder || !resultText) return;
+        if (!selectedOrder || !resultText || !isAuthorized) return;
         setIsSaving(true);
         const res = await updateTestResult(selectedOrder.record_id, resultText);
         setIsSaving(false);
@@ -29,14 +31,17 @@ export function ResultsClient({ orders }: { orders: any[] }) {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <BackButton href="/dashboard/tests" label="Back to Tests Catalog" />
+            <div className="flex items-center gap-4">
+                <BackButton href="/dashboard" label="Back to Dashboard" />
+                <BackButton href="/dashboard/tests" label="Back to Tests Catalog" />
+            </div>
             <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <ClipboardList className="w-6 h-6 text-blue-600" />
                     Lab Management
                 </h1>
                 <p className="text-slate-500">
-                    Update results for scheduled tests.
+                    {isAuthorized ? 'Update results for scheduled tests.' : 'View status of patient lab tests.'}
                 </p>
             </div>
 
@@ -75,12 +80,16 @@ export function ResultsClient({ orders }: { orders: any[] }) {
                                     </td>
                                     <td className="px-6 py-4">
                                         {order.status === 'COMPLETED' ? (
-                                            <button
-                                                onClick={() => { setSelectedOrder(order); setResultText(''); }}
-                                                className="text-blue-600 hover:underline font-medium"
-                                            >
-                                                Update Result
-                                            </button>
+                                            isAuthorized ? (
+                                                <button
+                                                    onClick={() => { setSelectedOrder(order); setResultText(order.result_summary || ''); }}
+                                                    className="text-blue-600 hover:underline font-medium"
+                                                >
+                                                    Update Result
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-400 italic text-xs">Pathologist Handled</span>
+                                            )
                                         ) : (
                                             <span className="text-slate-400 italic text-xs flex items-center gap-1">
                                                 <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
@@ -96,7 +105,7 @@ export function ResultsClient({ orders }: { orders: any[] }) {
             </div>
 
             {/* Edit Modal */}
-            {selectedOrder && (
+            {selectedOrder && isAuthorized && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl p-6">
                         <h3 className="text-xl font-bold text-slate-900 mb-4">Finalize Test Result</h3>

@@ -142,7 +142,7 @@ export default async function DoctorsPage() {
             )}
 
             {/* Leave Management System (Admin Only) */}
-            {role === 'Admin' && <LeaveManagementClient doctors={doctors} />}
+            {(role === 'Admin' || role === 'Staff') && <LeaveManagementClient doctors={doctors} />}
         </div>
     );
 }

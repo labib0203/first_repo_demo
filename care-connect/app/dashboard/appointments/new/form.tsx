@@ -172,8 +172,22 @@ export function BookAppointmentForm({ doctors, patients, bookAction, checkAvaila
                                     setBookingDetails((prev: any) => ({ ...prev, date: date }));
                                     // Fetch slots from DB
                                     if (getSlotsAction) {
-                                        const slots = await getSlotsAction(selectedDoctor.doctor_id, date);
-                                        setBookingDetails((prev: any) => ({ ...prev, availableTimeSlots: slots }));
+                                        const result = await getSlotsAction(selectedDoctor.doctor_id, date);
+                                        // Handle new object return { slots, message }
+                                        if (result && Array.isArray(result.slots)) {
+                                            setBookingDetails((prev: any) => ({
+                                                ...prev,
+                                                availableTimeSlots: result.slots,
+                                                availabilityMessage: result.message
+                                            }));
+                                        } else {
+                                            // Fallback for safety if type mismatch
+                                            setBookingDetails((prev: any) => ({
+                                                ...prev,
+                                                availableTimeSlots: Array.isArray(result) ? result : [],
+                                                availabilityMessage: null
+                                            }));
+                                        }
                                     }
                                 }
                             }}
@@ -193,6 +207,11 @@ export function BookAppointmentForm({ doctors, patients, bookAction, checkAvaila
                                 <option key={slot.slot_time} value={slot.slot_time}>{slot.formatted_time}</option>
                             ))}
                         </select>
+                        {bookingDetails?.availabilityMessage && (
+                            <p className="text-red-500 text-sm font-medium mt-1 animate-pulse">
+                                {bookingDetails.availabilityMessage}
+                            </p>
+                        )}
                     </div>
                 </div>
 

@@ -5,6 +5,7 @@ import { Pill, AlertTriangle, PlusCircle, Package, ShoppingCart } from 'lucide-r
 import { restockMedicine } from '@/lib/actions';
 import SellMedicineModal from './SellMedicineModal';
 import { useRouter } from 'next/navigation';
+import BackButton from '@/components/ui/BackButton';
 
 export default function PharmacyClient({ medicines, patients, role }: { medicines: any[], patients: any[], role: string | null }) {
     const [selectedMed, setSelectedMed] = useState<any>(null);
@@ -14,18 +15,21 @@ export default function PharmacyClient({ medicines, patients, role }: { medicine
 
     return (
         <div className="space-y-6 animate-fade-in">
+            <BackButton href="/dashboard" label="Back to Dashboard" />
             <div className="flex justify-between items-end">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <Pill className="text-emerald-600" />
+                        <Pill className="text-purple-600" />
                         Pharmacy Inventory
                     </h1>
-                    <p className="text-slate-500">Monitor stock levels and manage restocking.</p>
+                    <p className="text-slate-500">
+                        {role === 'Pharmacist' ? 'Monitor stock levels and manage restocking.' : 'Monitor medicine stock availability.'}
+                    </p>
                 </div>
-                {role !== 'Admin' && (
+                {role === 'Pharmacist' && (
                     <button
                         onClick={() => setIsSaleOpen(true)}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 font-medium"
+                        className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow-lg shadow-purple-600/20 font-medium"
                     >
                         <ShoppingCart size={18} /> New Sale
                     </button>
@@ -62,12 +66,14 @@ export default function PharmacyClient({ medicines, patients, role }: { medicine
                             )}
                         </div>
 
-                        <button
-                            onClick={() => setSelectedMed(med)}
-                            className="w-full py-2 border border-emerald-600 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 font-medium"
-                        >
-                            <PlusCircle size={16} /> Restock
-                        </button>
+                        {role === 'Pharmacist' && (
+                            <button
+                                onClick={() => setSelectedMed(med)}
+                                className="w-full py-2 border border-purple-600 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 font-medium"
+                            >
+                                <PlusCircle size={16} /> Restock
+                            </button>
+                        )}
                     </div>
                 ))}
             </div>
@@ -105,7 +111,7 @@ export default function PharmacyClient({ medicines, patients, role }: { medicine
                                             name="quantity"
                                             required
                                             min="1"
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                             placeholder="e.g., 100"
                                         />
                                     </div>
@@ -119,7 +125,7 @@ export default function PharmacyClient({ medicines, patients, role }: { medicine
                                                 required
                                                 step="0.01"
                                                 defaultValue={(selectedMed.unit_price * 0.8).toFixed(2)} // Auto-suggest slightly lower than selling price
-                                                className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                             />
                                         </div>
                                         <p className="text-xs text-slate-400 mt-1">Suggested buy price is 80% of sell price.</p>
@@ -137,7 +143,7 @@ export default function PharmacyClient({ medicines, patients, role }: { medicine
                                     <button
                                         type="submit"
                                         disabled={isRestocking}
-                                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium disabled:opacity-50"
+                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50"
                                     >
                                         {isRestocking ? 'Processing...' : 'Confirm Restock'}
                                     </button>

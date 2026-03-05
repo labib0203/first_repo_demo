@@ -20,7 +20,8 @@ export default async function InvoiceDetailsPage({ params }: { params: Promise<{
 
     return (
         <div className="max-w-4xl mx-auto my-8">
-            <div className="no-print">
+            <div className="no-print flex items-center gap-4 mb-4">
+                <BackButton href="/dashboard" label="Back to Dashboard" />
                 <BackButton href="/dashboard/billing" label="Back to Billing" />
             </div>
 

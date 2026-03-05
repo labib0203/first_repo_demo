@@ -323,6 +323,44 @@ async function seed() {
         }
         console.log('✅ Slots Fix Applied.');
 
+        // 16. Fix Leave Availability (Custom Fix 1)
+        console.log('⏳ Applying Leave Availability Fix...');
+        const leaveFixSql = fs.readFileSync(path.join(__dirname, '../database/18_fix_leave_availability.sql'), 'utf8');
+        const leaveFixBlocks = leaveFixSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of leaveFixBlocks) {
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing leave fix block:', e.message);
+            }
+        }
+        console.log('✅ Leave Availability Fix Applied.');
+
+        // 17. Add Slots Message (Custom Fix 2)
+        console.log('⏳ Applying Slots Message Update...');
+        const msgFixSql = fs.readFileSync(path.join(__dirname, '../database/19_add_slots_message.sql'), 'utf8');
+        const msgFixBlocks = msgFixSql
+            .replace(/DELIMITER \/\//g, '')
+            .replace(/DELIMITER ;/g, '')
+            .split('//')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        for (const block of msgFixBlocks) {
+            try {
+                await connection.query(block);
+            } catch (e) {
+                console.error('Error executing slots message block:', e.message);
+            }
+        }
+        console.log('✅ Slots Message Update Applied.');
+
     } catch (err) {
         console.error('Error seeding database:', err);
     } finally {

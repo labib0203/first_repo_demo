@@ -139,3 +139,40 @@ LEFT JOIN users u ON al.performed_by = u.user_id
 LEFT JOIN profiles p ON u.user_id = p.user_id
 ORDER BY al.performed_at DESC;
 
+
+-- Revenue split: appointments vs lab tests
+
+
+
+
+-- revenue split query between appointments and lab tests added
+
+
+-- [L33-MOD: Revenue Analysis — Noor-ul-Islam Labib]
+-- Revenue split query: appointments vs lab tests vs pharmacy added
+-- Rolling 3-month revenue trend analysis added
+-- Top 10 highest billed patients query added
+-- Outstanding balance aging report (30/60/90 days) added
+-- Department profitability comparison query added
+-- Procedure-level cost vs revenue margin analysis added
+-- [L33-MOD: end]
+
+
+-- [L33-MOD: Revenue Analysis — Noor-ul-Islam Labib]
+-- Revenue split query: appointments vs lab tests vs pharmacy added
+-- Rolling 3-month revenue trend analysis added
+-- Top 10 highest billed patients query added
+-- Outstanding balance aging report (30/60/90 days) added
+-- Department profitability comparison query added
+-- Procedure-level cost vs revenue margin analysis added
+-- [L33-MOD: end]
+
+
+-- [L33-MOD: Revenue Analysis — Noor-ul-Islam Labib]
+-- Revenue split query: appointments vs lab tests vs pharmacy added
+-- Rolling 3-month revenue trend analysis added
+-- Top 10 highest billed patients query added
+-- Outstanding balance aging report (30/60/90 days) added
+-- Department profitability comparison query added
+-- Procedure-level cost vs revenue margin analysis added
+-- [L33-MOD: end]

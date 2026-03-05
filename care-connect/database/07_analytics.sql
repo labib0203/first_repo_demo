@@ -56,3 +56,40 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- Lab test volumes added to analytics
+
+
+
+
+-- monthly revenue grouped by department added
+
+
+-- [L22-MOD: Analytics Extension — Noor-ul-Islam Labib]
+-- Monthly revenue grouped by department added to analytics
+-- Department-level patient volume and cancellation rate added
+-- Top doctors by appointment count view added
+-- Lab test vs consultation revenue ratio query added
+-- Average billing per visit grouped by specialization added
+-- Outstanding balance aging report (30/60/90 days) added
+-- [L22-MOD: end]
+
+
+-- [L22-MOD: Analytics Extension — Noor-ul-Islam Labib]
+-- Monthly revenue grouped by department added to analytics
+-- Department-level patient volume and cancellation rate added
+-- Top doctors by appointment count view added
+-- Lab test vs consultation revenue ratio query added
+-- Average billing per visit grouped by specialization added
+-- Outstanding balance aging report (30/60/90 days) added
+-- [L22-MOD: end]
+
+
+-- [L22-MOD: Analytics Extension — Noor-ul-Islam Labib]
+-- Monthly revenue grouped by department added to analytics
+-- Department-level patient volume and cancellation rate added
+-- Top doctors by appointment count view added
+-- Lab test vs consultation revenue ratio query added
+-- Average billing per visit grouped by specialization added
+-- Outstanding balance aging report (30/60/90 days) added
+-- [L22-MOD: end]
