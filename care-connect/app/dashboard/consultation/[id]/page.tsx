@@ -9,6 +9,13 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
     const medicines = await getMedicines() as any[];
 
     if (!appointment) return notFound();
+    
+    // Time check: prevent access if now < appointment_date
+    const apptTime = new Date(appointment.appointment_date);
+    const now = new Date();
+    if (now < apptTime && appointment.status !== 'Completed') {
+        return redirect('/dashboard/appointments?error=too-early');
+    }
 
     return (
         <div className="animate-fade-in">

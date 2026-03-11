@@ -25,13 +25,14 @@ WHERE d.consultation_fee > (SELECT AVG(consultation_fee) FROM doctors)`
         id: 2,
         title: "Revenue by Department",
         description: "Rollup aggregation of revenue by department",
-        details: "Includes Grand Total with ROLLUP function",
+        details: "Includes Admissions, Lab, Pharmacy & Grand Total with ROLLUP",
         icon: <TrendingUp className="w-5 h-5 text-emerald-500" />,
         color: "bg-emerald-50 border-emerald-100",
         sql: `SELECT 
     COALESCE(department, 'GRAND TOTAL') AS department,
     SUM(revenue) AS total_revenue
 FROM (
+    -- 1. Consultation Revenue (Appointment Invoices)
     SELECT 
         dept.name AS department,
         i.net_amount AS revenue
@@ -42,9 +43,10 @@ FROM (
     WHERE i.status = 'Paid'
 
     UNION ALL
-    
+
+    -- 2. Lab Test Revenue
     SELECT 
-        'Laboratory' AS department,
+        'Laboratory & Diagnostics' AS department,
         i.net_amount AS revenue
     FROM invoices i
     WHERE i.test_record_id IS NOT NULL 
@@ -52,8 +54,9 @@ FROM (
 
     UNION ALL
 
+    -- 3. Pharmacy Revenue
     SELECT 
-        'Pharmacy Sales' AS department,
+        'Pharmacy' AS department,
         i.net_amount AS revenue
     FROM invoices i
     WHERE i.pharmacy_order_id IS NOT NULL
@@ -61,11 +64,22 @@ FROM (
 
     UNION ALL
 
+    -- 4. Pharmacy Expenses (Restock Cost — deducted)
     SELECT
-        'Pharmacy (Restock Expenses)' AS department,
+        'Pharmacy' AS department,
         -(amount) AS revenue
     FROM hospital_expenses
     WHERE category = 'Pharmacy_Restock'
+
+    UNION ALL
+
+    -- 5. Inpatient & Rooms (Admission / Room Charges)
+    SELECT
+        'Inpatient & Rooms' AS department,
+        total_cost AS revenue
+    FROM admissions
+    WHERE status = 'Discharged'
+    AND total_cost > 0
 
 ) AS combined_revenue
 GROUP BY department WITH ROLLUP`

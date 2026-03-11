@@ -50,6 +50,16 @@ BEGIN
         WHERE i.pharmacy_order_id IS NOT NULL 
         AND i.status = 'Paid'
         AND i.generated_at BETWEEN p_start_date AND p_end_date
+
+        UNION ALL
+
+        -- 4. Pharmacy Expenses (Restock)
+        SELECT 
+            'Pharmacy' as department_name,
+            -IFNULL(SUM(amount), 0) as revenue
+        FROM hospital_expenses
+        WHERE category = 'Pharmacy_Restock'
+        AND expense_date BETWEEN p_start_date AND p_end_date
     ) as combined_data
     GROUP BY department_name
     ORDER BY total_revenue DESC;

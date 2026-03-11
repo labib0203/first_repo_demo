@@ -171,8 +171,16 @@ BEGIN
     INSERT INTO financial_reports (report_type, period_label, total_revenue)
     SELECT 'Yearly', DATE_FORMAT(generated_at, '%Y'), SUM(net_amount)
     FROM invoices 
-    WHERE status = 'Paid' AND test_record_id IS NOT NULL
+    WHERE status = 'Paid' AND test_record_id IS NOT NULL AND invoice_id NOT IN (SELECT invoice_id FROM payments)
     GROUP BY DATE_FORMAT(generated_at, '%Y')
+    ON DUPLICATE KEY UPDATE total_revenue = total_revenue + VALUES(total_revenue);
+
+    -- From Expenses (Pharmacy Restock)
+    INSERT INTO financial_reports (report_type, period_label, total_revenue)
+    SELECT 'Yearly', DATE_FORMAT(expense_date, '%Y'), -SUM(amount)
+    FROM hospital_expenses 
+    WHERE category = 'Pharmacy_Restock'
+    GROUP BY DATE_FORMAT(expense_date, '%Y')
     ON DUPLICATE KEY UPDATE total_revenue = total_revenue + VALUES(total_revenue);
 
     -- B. MONTHLY
@@ -186,8 +194,16 @@ BEGIN
     INSERT INTO financial_reports (report_type, period_label, total_revenue)
     SELECT 'Monthly', DATE_FORMAT(generated_at, '%Y-%m'), SUM(net_amount)
     FROM invoices 
-    WHERE status = 'Paid' AND test_record_id IS NOT NULL
+    WHERE status = 'Paid' AND test_record_id IS NOT NULL AND invoice_id NOT IN (SELECT invoice_id FROM payments)
     GROUP BY DATE_FORMAT(generated_at, '%Y-%m')
+    ON DUPLICATE KEY UPDATE total_revenue = total_revenue + VALUES(total_revenue);
+    
+    -- From Expenses
+    INSERT INTO financial_reports (report_type, period_label, total_revenue)
+    SELECT 'Monthly', DATE_FORMAT(expense_date, '%Y-%m'), -SUM(amount)
+    FROM hospital_expenses 
+    WHERE category = 'Pharmacy_Restock'
+    GROUP BY DATE_FORMAT(expense_date, '%Y-%m')
     ON DUPLICATE KEY UPDATE total_revenue = total_revenue + VALUES(total_revenue);
 
     -- C. WEEKLY
@@ -201,8 +217,16 @@ BEGIN
     INSERT INTO financial_reports (report_type, period_label, total_revenue)
     SELECT 'Weekly', DATE_FORMAT(generated_at, '%x-W%v'), SUM(net_amount)
     FROM invoices 
-    WHERE status = 'Paid' AND test_record_id IS NOT NULL
+    WHERE status = 'Paid' AND test_record_id IS NOT NULL AND invoice_id NOT IN (SELECT invoice_id FROM payments)
     GROUP BY DATE_FORMAT(generated_at, '%x-W%v')
+    ON DUPLICATE KEY UPDATE total_revenue = total_revenue + VALUES(total_revenue);
+
+    -- From Expenses
+    INSERT INTO financial_reports (report_type, period_label, total_revenue)
+    SELECT 'Weekly', DATE_FORMAT(expense_date, '%x-W%v'), -SUM(amount)
+    FROM hospital_expenses 
+    WHERE category = 'Pharmacy_Restock'
+    GROUP BY DATE_FORMAT(expense_date, '%x-W%v')
     ON DUPLICATE KEY UPDATE total_revenue = total_revenue + VALUES(total_revenue);
 
 END //
@@ -256,6 +280,29 @@ BEGIN
         INSERT INTO financial_reports (report_type, period_label, total_revenue)
         VALUES ('Weekly', DATE_FORMAT(NEW.generated_at, '%x-W%v'), NEW.net_amount)
         ON DUPLICATE KEY UPDATE total_revenue = total_revenue + NEW.net_amount;
+    END IF;
+END //
+
+-- Trigger on Expenses Insert (deduct from revenue)
+CREATE TRIGGER trg_update_financials_on_expense
+AFTER INSERT ON hospital_expenses
+FOR EACH ROW
+BEGIN
+    IF NEW.category = 'Pharmacy_Restock' THEN
+        -- Update Yearly
+        INSERT INTO financial_reports (report_type, period_label, total_revenue)
+        VALUES ('Yearly', DATE_FORMAT(NEW.expense_date, '%Y'), -NEW.amount)
+        ON DUPLICATE KEY UPDATE total_revenue = total_revenue - NEW.amount;
+
+        -- Update Monthly
+        INSERT INTO financial_reports (report_type, period_label, total_revenue)
+        VALUES ('Monthly', DATE_FORMAT(NEW.expense_date, '%Y-%m'), -NEW.amount)
+        ON DUPLICATE KEY UPDATE total_revenue = total_revenue - NEW.amount;
+
+        -- Update Weekly
+        INSERT INTO financial_reports (report_type, period_label, total_revenue)
+        VALUES ('Weekly', DATE_FORMAT(NEW.expense_date, '%x-W%v'), -NEW.amount)
+        ON DUPLICATE KEY UPDATE total_revenue = total_revenue - NEW.amount;
     END IF;
 END //
 

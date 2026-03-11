@@ -371,8 +371,8 @@ INSERT INTO payments (invoice_id, amount, payment_method, payment_date) VALUES
 (105, 1500.00, 'Online', NOW());
 
 -- Lab Tests
-INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status) VALUES
-(1, 1, 500, 1, 'PAID', 'COMPLETED');
+INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status, scheduled_date) VALUES
+(1, 1, 500, 1, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY));
 
 -- Invoice for the test (Manual ID 500)
 INSERT INTO invoices (invoice_id, test_record_id, total_amount, net_amount, status, generated_at) VALUES
@@ -492,19 +492,19 @@ INSERT INTO invoices (invoice_id, appointment_id, total_amount, net_amount, stat
 -- Ensuring Patients 2,4,6,7 have tests (1,3,5 already active in appts)
 
 -- Patient 2 (Abdul) - XRay
-INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status) VALUES (2, 2, 600, 2, 'PAID', 'COMPLETED');
+INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status, scheduled_date) VALUES (2, 2, 600, 2, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 MONTH));
 INSERT INTO invoices (invoice_id, test_record_id, total_amount, net_amount, status, generated_at) VALUES (600, 600, 800.00, 800.00, 'Paid', DATE_SUB(NOW(), INTERVAL 2 MONTH));
 
 -- Patient 4 (Kamal) - Lipid Profile
-INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status) VALUES (4, 3, 601, 1, 'PAID', 'COMPLETED');
+INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status, scheduled_date) VALUES (4, 3, 601, 1, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 1 MONTH));
 INSERT INTO invoices (invoice_id, test_record_id, total_amount, net_amount, status, generated_at) VALUES (601, 601, 1500.00, 1500.00, 'Paid', DATE_SUB(NOW(), INTERVAL 1 MONTH));
 
 -- Patient 6 (James) - Dengue
-INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status) VALUES (6, 4, 602, 6, 'PAID', 'COMPLETED');
+INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status, scheduled_date) VALUES (6, 4, 602, 6, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 WEEK));
 INSERT INTO invoices (invoice_id, test_record_id, total_amount, net_amount, status, generated_at) VALUES (602, 602, 1200.00, 1200.00, 'Paid', DATE_SUB(NOW(), INTERVAL 3 WEEK));
 
 -- Patient 7 (Anisul) - CBC
-INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status) VALUES (7, 1, 603, 3, 'PAID', 'COMPLETED');
+INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status, scheduled_date) VALUES (7, 1, 603, 3, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 1 DAY));
 INSERT INTO invoices (invoice_id, test_record_id, total_amount, net_amount, status, generated_at) VALUES (603, 603, 600.00, 600.00, 'Paid', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 
@@ -570,10 +570,10 @@ INSERT INTO invoices (invoice_id, appointment_id, total_amount, net_amount, stat
 INSERT INTO payments (invoice_id, amount, payment_method, payment_date) VALUES (306, 2000.00, 'Cash', DATE_SUB(NOW(), INTERVAL 8 DAY));
 
 -- EXTRA PATIENT TESTS
-INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status) VALUES 
-(5, 1, 700, 1, 'PAID', 'COMPLETED'), -- Salma CBC
-(6, 2, 701, 2, 'PAID', 'COMPLETED'), -- James XRay
-(7, 3, 702, 6, 'PAID', 'COMPLETED'); -- Anisul Lipid
+INSERT INTO patient_tests (patient_id, test_id, record_id, doctor_id, payment_status, status, scheduled_date) VALUES 
+(5, 1, 700, 1, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 1 DAY)), -- Salma CBC
+(6, 2, 701, 2, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY)), -- James XRay
+(7, 3, 702, 6, 'PAID', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY)); -- Anisul Lipid
 
 INSERT INTO invoices (invoice_id, test_record_id, total_amount, net_amount, status, generated_at) VALUES 
 (700, 700, 600.00, 600.00, 'Paid', DATE_SUB(NOW(), INTERVAL 1 DAY)),

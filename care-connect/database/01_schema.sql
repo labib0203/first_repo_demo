@@ -359,169 +359,62 @@ CREATE TABLE IF NOT EXISTS staff (
     FOREIGN KEY (dept_id) REFERENCES departments(dept_id) ON DELETE SET NULL
 );
 
--- reviewed column constraints Jan 2
 
--- Final FK and constraint review for submission
+-- 26. Staff Table
+CREATE TABLE IF NOT EXISTS staff (
+    staff_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    dept_id INT NULL,
+    job_title VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    shift ENUM('Day', 'Night', 'Rotational') DEFAULT 'Day',
+    joining_date DATE,
+    qualification VARCHAR(255) NULL,
+    hire_date DATE NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (dept_id) REFERENCES departments(dept_id) ON DELETE SET NULL
+);
 
+-- 27. Doctor Slots Table (Optimized for Booking)
+CREATE TABLE IF NOT EXISTS doctor_slots (
+    slot_id INT AUTO_INCREMENT PRIMARY KEY,
+    doctor_id INT NOT NULL,
+    slot_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE,
+    UNIQUE KEY uq_doctor_slot (doctor_id, slot_date, start_time)
+);
 
+-- 28. Leave Requests Table
+CREATE TABLE IF NOT EXISTS leave_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_id INT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by INT NULL,
+    reviewed_at DATETIME NULL,
+    review_note VARCHAR(500) NULL,
+    FOREIGN KEY (staff_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES staff(staff_id) ON DELETE SET NULL,
+    CONSTRAINT chk_leave_range CHECK (end_date >= start_date)
+);
 
+-- 29. Billing Table
+CREATE TABLE IF NOT EXISTS billing (
+    billing_id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT UNIQUE NULL,
+    patient_id INT NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    paid_amount DECIMAL(10, 2) DEFAULT 0.00,
+    payment_status ENUM('Unpaid', 'Partially_Paid', 'Paid') DEFAULT 'Unpaid',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE
+);
 
-
--- final schema audit: FK constraints verified, submission ready
-
-
-ALTER TABLE appointments
-    MODIFY COLUMN notes TEXT NULL DEFAULT NULL,
-    MODIFY COLUMN cancellation_reason VARCHAR(255) NULL DEFAULT NULL;
-
-ALTER TABLE billing
-    ADD COLUMN IF NOT EXISTS patient_id INT NULL,
-    ADD CONSTRAINT fk_billing_patient
-        FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
-        ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE doctor_slots
-    ADD CONSTRAINT chk_slot_times CHECK (end_time > start_time),
-    ADD CONSTRAINT uq_doctor_slot_time
-        UNIQUE (doctor_id, slot_date, start_time);
-
-ALTER TABLE appointments
-    ADD CONSTRAINT chk_appointment_future CHECK (appointment_date >= CURDATE());
-
-ALTER TABLE leave_requests
-    ADD CONSTRAINT chk_leave_date_range CHECK (end_date >= start_date),
-    ADD COLUMN IF NOT EXISTS reviewed_by INT NULL,
-    ADD CONSTRAINT fk_leave_reviewed_by
-        FOREIGN KEY (reviewed_by) REFERENCES staff(staff_id)
-        ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS idx_leave_staff_status
-    ON leave_requests(staff_id, status, start_date);
-CREATE INDEX IF NOT EXISTS idx_billing_status_date
-    ON billing(payment_status, created_at);
-
--- [L47-MOD: Final Schema Audit — Noor-ul-Islam Labib]
--- All FK constraints verified, indexes confirmed for join-heavy queries
--- Redundant NULLable columns tightened to NOT NULL where safely applicable
--- Check constraints reviewed for date and status enumeration fields
--- Composite indexes confirmed on high-traffic lookup columns
--- Schema submission-ready: no outstanding TODOs or draft sections
--- [L47-MOD: end]
-
-
-
--- Fix nullable columns in appointments
-ALTER TABLE appointments
-    MODIFY COLUMN notes                  TEXT         NULL DEFAULT NULL,
-    MODIFY COLUMN cancellation_reason    VARCHAR(255) NULL DEFAULT NULL,
-    MODIFY COLUMN follow_up_date         DATE         NULL DEFAULT NULL,
-    ADD COLUMN    priority               ENUM('normal','urgent','emergency')
-                                         NOT NULL DEFAULT 'normal'
-                                         AFTER status;
-
--- Add direct patient reference to billing for faster lookups
-ALTER TABLE billing
-    ADD COLUMN IF NOT EXISTS patient_id  INT NULL AFTER appointment_id,
-    ADD CONSTRAINT fk_billing_patient
-        FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
-        ON DELETE SET NULL ON UPDATE CASCADE;
-
--- Slot uniqueness and time-range integrity
-ALTER TABLE doctor_slots
-    ADD CONSTRAINT chk_slot_times
-        CHECK (end_time > start_time),
-    ADD CONSTRAINT uq_doctor_slot_time
-        UNIQUE (doctor_id, slot_date, start_time);
-
--- Leave request date range integrity
-ALTER TABLE leave_requests
-    ADD CONSTRAINT chk_leave_date_range
-        CHECK (end_date >= start_date),
-    ADD COLUMN IF NOT EXISTS reviewed_by   INT  NULL,
-    ADD COLUMN IF NOT EXISTS reviewed_at   DATETIME NULL,
-    ADD COLUMN IF NOT EXISTS review_note   VARCHAR(500) NULL,
-    ADD CONSTRAINT fk_leave_reviewed_by
-        FOREIGN KEY (reviewed_by) REFERENCES staff(staff_id)
-        ON DELETE SET NULL ON UPDATE CASCADE;
-
--- Staff table: add qualification and hire_date if missing
-ALTER TABLE staff
-    ADD COLUMN IF NOT EXISTS qualification VARCHAR(255) NULL,
-    ADD COLUMN IF NOT EXISTS hire_date     DATE NULL,
-    ADD COLUMN IF NOT EXISTS is_active     TINYINT(1) NOT NULL DEFAULT 1;
-
--- Supporting indexes for new columns and constraints
-CREATE INDEX IF NOT EXISTS idx_leave_staff_status
-    ON leave_requests(staff_id, status, start_date);
-CREATE INDEX IF NOT EXISTS idx_billing_status_date
-    ON billing(payment_status, created_at);
-CREATE INDEX IF NOT EXISTS idx_appt_priority_status
-    ON appointments(priority, status, appointment_date);
-CREATE INDEX IF NOT EXISTS idx_staff_role_active
-    ON staff(role, is_active);
-
--- [L47-MOD: Final Schema Audit — Noor-ul-Islam Labib]
--- All FK constraints verified, indexes confirmed for join-heavy queries
--- Redundant NULLable columns tightened to NOT NULL where safely applicable
--- Check constraints reviewed for date and status enumeration fields
--- Composite indexes confirmed on high-traffic lookup columns
--- Schema submission-ready: no outstanding TODOs or draft sections
--- [L47-MOD: end]
-
-
--- Schema FK Corrections & Constraint Updates — Farhana Uvro
-
--- Fix nullable columns in appointments
-ALTER TABLE appointments
-    MODIFY COLUMN notes                  TEXT         NULL DEFAULT NULL,
-    MODIFY COLUMN cancellation_reason    VARCHAR(255) NULL DEFAULT NULL,
-    MODIFY COLUMN follow_up_date         DATE         NULL DEFAULT NULL,
-    ADD COLUMN    priority               ENUM('normal','urgent','emergency')
-                                         NOT NULL DEFAULT 'normal'
-                                         AFTER status;
-
--- Add direct patient reference to billing
-ALTER TABLE billing
-    ADD COLUMN IF NOT EXISTS patient_id  INT NULL AFTER appointment_id,
-    ADD CONSTRAINT fk_billing_patient
-        FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
-        ON DELETE SET NULL ON UPDATE CASCADE;
-
--- Slot uniqueness and time-range integrity
-ALTER TABLE doctor_slots
-    ADD CONSTRAINT chk_slot_times   CHECK (end_time > start_time),
-    ADD CONSTRAINT uq_doctor_slot   UNIQUE (doctor_id, slot_date, start_time);
-
--- Leave request date range and reviewer tracking
-ALTER TABLE leave_requests
-    ADD CONSTRAINT chk_leave_range  CHECK (end_date >= start_date),
-    ADD COLUMN IF NOT EXISTS reviewed_by  INT NULL,
-    ADD COLUMN IF NOT EXISTS reviewed_at  DATETIME NULL,
-    ADD COLUMN IF NOT EXISTS review_note  VARCHAR(500) NULL,
-    ADD CONSTRAINT fk_leave_reviewer
-        FOREIGN KEY (reviewed_by) REFERENCES staff(staff_id)
-        ON DELETE SET NULL ON UPDATE CASCADE;
-
--- Staff table: qualification and hire_date
-ALTER TABLE staff
-    ADD COLUMN IF NOT EXISTS qualification VARCHAR(255) NULL,
-    ADD COLUMN IF NOT EXISTS hire_date     DATE NULL,
-    ADD COLUMN IF NOT EXISTS is_active     TINYINT(1) NOT NULL DEFAULT 1;
-
--- Supporting indexes
-CREATE INDEX IF NOT EXISTS idx_leave_staff_status
-    ON leave_requests(staff_id, status, start_date);
-CREATE INDEX IF NOT EXISTS idx_billing_status_date
-    ON billing(payment_status, created_at);
-CREATE INDEX IF NOT EXISTS idx_appt_priority
-    ON appointments(priority, status, appointment_date);
-CREATE INDEX IF NOT EXISTS idx_staff_role_active
-    ON staff(role, is_active);
-
-
--- [L47-MOD: Final Schema Audit — Noor-ul-Islam Labib]
--- All FK constraints verified, indexes confirmed for join-heavy queries
--- Redundant NULLable columns tightened to NOT NULL where safely applicable
--- Check constraints reviewed for date and status enumeration fields
--- Schema submission-ready: no outstanding TODOs or draft sections
--- [L47-MOD: end]

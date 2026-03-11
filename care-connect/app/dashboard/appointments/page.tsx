@@ -89,11 +89,25 @@ export default async function AppointmentsPage(props: { searchParams: Promise<{ 
                                         {isPathologist ? `৳${item.cost}` : (item.total_amount ? `৳${item.total_amount}` : '-')}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {isPathologist ? (
-                                            <Link href="/dashboard/lab-management" className="text-rose-600 hover:text-rose-700 font-bold text-xs flex items-center gap-1">
-                                                <Microscope size={14} /> Handle Lab
-                                            </Link>
-                                        ) : (
+                                        {isPathologist ? (() => {
+                                            const scheduledTime = new Date(item.scheduled_date);
+                                            const now = new Date();
+                                            const isTooEarly = now < scheduledTime;
+
+                                            if (isTooEarly && item.status !== 'COMPLETED') {
+                                                return (
+                                                    <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                                                        <Clock size={12} /> Pending Time
+                                                    </span>
+                                                );
+                                            }
+
+                                            return (
+                                                <Link href="/dashboard/lab-management" className="text-rose-600 hover:text-rose-700 font-bold text-xs flex items-center gap-1">
+                                                    <Microscope size={14} /> Handle Lab
+                                                </Link>
+                                            );
+                                        })() : (
                                             <div className="flex gap-2">
                                                 {role !== 'Admin' && item.status === 'Completed' && !item.total_amount && (
                                                     <form action={async () => {
@@ -106,11 +120,25 @@ export default async function AppointmentsPage(props: { searchParams: Promise<{ 
                                                     </form>
                                                 )}
 
-                                                {role === 'Admin' && (item.status === 'Confirmed' || item.status === 'Scheduled') && (
-                                                    <a href={`/dashboard/consultation/${item.appointment_id}`} className="flex items-center gap-1 text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 border border-purple-200 font-medium">
-                                                        <Stethoscope size={14} /> Start Consult
-                                                    </a>
-                                                )}
+                                                {role === 'Admin' && (item.status === 'Confirmed' || item.status === 'Scheduled') && (() => {
+                                                    const apptTime = new Date(item.appointment_date);
+                                                    const now = new Date();
+                                                    const isTooEarly = now < apptTime;
+
+                                                    if (isTooEarly) {
+                                                        return (
+                                                            <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                                                                <Clock size={12} /> Scheduled Later
+                                                            </span>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <a href={`/dashboard/consultation/${item.appointment_id}`} className="flex items-center gap-1 text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 border border-purple-200 font-medium">
+                                                            <Stethoscope size={14} /> Start Consult
+                                                        </a>
+                                                    );
+                                                })()}
 
                                                 {!((role !== 'Admin' && item.status === 'Completed' && !item.total_amount) || (role === 'Admin' && (item.status === 'Confirmed' || item.status === 'Scheduled'))) && (
                                                     <span className="text-xs text-slate-400">No Action</span>

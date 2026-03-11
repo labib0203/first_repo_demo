@@ -203,20 +203,20 @@ function BookingModal({ roomType, patients, onClose }: any) {
                             </p>
                         </div>
 
-                        {/* Payment Info varies by type, but sticking to Prompt Requirement 'Make a payment' */}
-                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-                            <div className="flex justify-between text-base font-bold text-slate-900">
-                                <span>Booking Payment</span>
-                                <span>
-                                    {roomType === 'ICU' ? '৳10,000' :
-                                        roomType === 'Ward_AC' ? '৳3,000' :
-                                            roomType === 'Ward_NonAC' ? '৳1,500' : 'Starts from ৳0/Variable'}
-                                </span>
+                        {/* Admission Info */}
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-2">
+                            <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
+                                <CreditCard size={16} />
+                                Billing on Discharge
                             </div>
                             <p className="text-xs text-slate-500">
-                                {roomType === 'Consultation' || roomType === 'Lab' ?
-                                    'Consultation and Lab rooms are typically assigned via Appointments/Tests, but can be manually booked here if needed for specific procedures.' :
-                                    'Required as initial deposit for admission.'}
+                                No payment is collected at booking. The full room charge is calculated based on the number of days stayed and billed automatically when the patient is discharged.
+                            </p>
+                            <p className="text-xs font-semibold text-blue-700">
+                                Rate: {roomType === 'ICU' ? '৳10,000/day' :
+                                    roomType === 'Ward_AC' ? '৳3,000/day' :
+                                        roomType === 'Ward_NonAC' ? '৳1,500/day' :
+                                            roomType === 'Operation_Theater' ? '৳15,000/day' : 'Variable/day'}
                             </p>
                         </div>
 
@@ -242,8 +242,8 @@ function SubmitButton() {
             disabled={pending}
             className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
         >
-            <CreditCard size={18} />
-            {pending ? 'Processing...' : 'Confirm Booking & Pay'}
+            <Bed size={18} />
+            {pending ? 'Reserving Room...' : 'Confirm Admission'}
         </button>
     );
 }

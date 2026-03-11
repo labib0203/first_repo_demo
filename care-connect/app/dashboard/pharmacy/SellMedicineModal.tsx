@@ -43,7 +43,8 @@ export default function SellMedicineModal({
     const updateQuantity = (id: number, delta: number) => {
         setCart(cart.map(item => {
             if (item.medicine_id === id) {
-                const newQty = item.quantity + delta;
+                const currentQty = typeof item.quantity === 'number' ? item.quantity : (parseInt(item.quantity) || 0);
+                const newQty = currentQty + delta;
                 if (newQty > item.stock_quantity) {
                     showNotification(`Max available stock is ${item.stock_quantity}`);
                     return item;
@@ -54,11 +55,35 @@ export default function SellMedicineModal({
         }));
     };
 
+    const setExactQuantity = (id: number, qtyStr: string) => {
+        if (qtyStr === '') {
+            setCart(cart.map(item => item.medicine_id === id ? { ...item, quantity: '' } : item));
+            return;
+        }
+
+        let parsed = parseInt(qtyStr);
+        if (isNaN(parsed)) return;
+
+        setCart(cart.map(item => {
+            if (item.medicine_id === id) {
+                if (parsed > item.stock_quantity) {
+                    showNotification(`Max available stock is ${item.stock_quantity}`);
+                    return { ...item, quantity: item.stock_quantity };
+                }
+                return { ...item, quantity: parsed };
+            }
+            return item;
+        }));
+    };
+
     const removeFromCart = (id: number) => {
         setCart(cart.filter(item => item.medicine_id !== id));
     };
 
-    const totalAmount = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const totalAmount = cart.reduce((sum, item) => {
+        const qty = typeof item.quantity === 'number' ? item.quantity : (parseInt(item.quantity) || 0);
+        return sum + (qty * item.unit_price);
+    }, 0);
 
     const handleCheckout = async () => {
         if (!selectedPatient) return showNotification("Please select a patient to proceed.");
@@ -67,7 +92,7 @@ export default function SellMedicineModal({
         setIsSubmitting(true);
         const orderItems = cart.map(item => ({
             medicineId: item.medicine_id,
-            quantity: item.quantity,
+            quantity: Math.max(1, typeof item.quantity === 'number' ? item.quantity : (parseInt(item.quantity) || 1)),
             price: item.unit_price
         }));
 
@@ -181,14 +206,26 @@ export default function SellMedicineModal({
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => updateQuantity(item.medicine_id, -1)}
-                                        className="p-1 text-slate-400 hover:text-blue-600 rounded"
+                                        className="p-1 text-slate-400 hover:text-blue-600 rounded flex-shrink-0"
                                     >
                                         <Minus size={14} />
                                     </button>
-                                    <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={item.stock_quantity}
+                                        value={item.quantity}
+                                        onChange={(e) => setExactQuantity(item.medicine_id, e.target.value)}
+                                        onBlur={(e) => {
+                                            if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                                                setExactQuantity(item.medicine_id, '1');
+                                            }
+                                        }}
+                                        className="w-16 text-center text-sm font-bold border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
                                     <button
                                         onClick={() => updateQuantity(item.medicine_id, 1)}
-                                        className="p-1 text-slate-400 hover:text-blue-600 rounded"
+                                        className="p-1 text-slate-400 hover:text-blue-600 rounded flex-shrink-0"
                                     >
                                         <Plus size={14} />
                                     </button>
@@ -199,8 +236,8 @@ export default function SellMedicineModal({
                                         <Trash2 size={16} />
                                     </button>
                                 </div>
-                                <div className="w-16 text-right font-medium text-slate-900">
-                                    ৳{item.unit_price * item.quantity}
+                                <div className="w-20 text-right font-medium text-slate-900">
+                                    ৳{item.unit_price * (typeof item.quantity === 'number' ? item.quantity : (parseInt(item.quantity) || 0))}
                                 </div>
                             </div>
                         ))}
